@@ -3,9 +3,9 @@
 
 Our project is as follows:
 
-* Follow a track of magnetic tape with a cart, including 90* turns.
+* Follow a track of magnetic tape with a cart, including varying degree turns (up to 90*?)
 * On either side of the track, there will be 3 infared lights operating at 10, 100, and 1k Hz, respectively.
-   * Sense these lights and stop, then deliver a notecard into a 'mailbox' waiting for it.
+   * Sense these lights and stop, then deliver a notecard into a 'mailbox' waiting for it 1 ft above floor.
    * Each Hz represents one of the different mailboxes and which of the 3 cards we'll have to deliver.
 
 Needed:
