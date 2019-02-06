@@ -16,16 +16,20 @@ module MainProjectv0_1(
     always @(posedge clk) begin // Storage of incoming data for comparison.
                 // Can compare storage[odd] to storage[previous even] to determine change in state.
                 // These are flip flops.
+                // Each of this is separate and unrelated.
         {storage[1],storage[0]} <= {storage[0],induct[0]}; // After 2 clk pulses, storage[1] contains induct[0]
         {storage[3],storage[2]} <= {storage[2],induct[1]}; // After 2 clk pulses, storage[3] contains induct[1]
         {storage[5],storage[4]} <= {storage[4],induct[2]}; // After 2 clk pulses, storage[5] contains induct[2]
 //        {storage[7],storage[6]} <= {storage[6],photo}; // After 2 clk pulses, storage[5] contains photo // Is valid for photoreceptor?
-                    // Needs 3x pass filters.
+                    // Needs 3x pass filters. Don't know how they work in code.
     end
     
     // Module to determine frequency- Out into a wire containing frequency. Compare frequency to parameters (10, 100, 1k Hz)
         // If match, perform mechanical function.
         
+    // N bit storage for input frequency, swapped as the storage variables above for each given clock pulse?
+        // {FreqStore[0],FreqStore[1],...,FreqStore[N]} <= {FreqStore[1],FreqStore[2],...,FreqStore[N],FreqInput}
+        // Compare the current range of [N+1]FreqStore to ExpectedFrequency (aka parameters 10,100,1k) ?
         
     // Module to determine if currently on the track. Check if 1 or 2 is active, if not, 0. If none, reverse and try again.
         // 1 + 2 have priority, as they dictate turning.
