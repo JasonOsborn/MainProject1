@@ -1,3 +1,5 @@
+// This is just a rough outline based on what the tutor said. 
+
 module MainProjectv0_1(
         input clk,
         input [2:0]induct, // Inductor sensors (x3)
@@ -13,6 +15,7 @@ module MainProjectv0_1(
     
     always @(posedge clk) begin // Storage of incoming data for comparison.
                 // Can compare storage[odd] to storage[previous even] to determine change in state.
+                // These are flip flops.
         {storage[1],storage[0]} <= {storage[0],induct[0]}; // After 2 clk pulses, storage[1] contains induct[0]
         {storage[3],storage[2]} <= {storage[2],induct[1]}; // After 2 clk pulses, storage[3] contains induct[1]
         {storage[5],storage[4]} <= {storage[4],induct[2]}; // After 2 clk pulses, storage[5] contains induct[2]
