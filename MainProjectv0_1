@@ -1,0 +1,32 @@
+module MainProjectv0_1(
+        input clk,
+        input [2:0]induct, // Inductor sensors (x3)
+        input photo // Photodiode x1
+        
+        );
+        
+        // Notes: ctrl-d copies and pastes current line.
+        
+    // Variable Storage
+    reg [7:0] storage = 8'd0; // Flip-Flop storage of inputs. Size = 2*# of inputs.
+    localparam eightsec = 12_500_000; // Clock cycles = 1/8th of second. 12,500,000 cycles.
+    
+    always @(posedge clk) begin // Storage of incoming data for comparison.
+                // Can compare storage[odd] to storage[previous even] to determine change in state.
+        {storage[1],storage[0]} <= {storage[0],induct[0]}; // After 2 clk pulses, storage[1] contains induct[0]
+        {storage[3],storage[2]} <= {storage[2],induct[1]}; // After 2 clk pulses, storage[3] contains induct[1]
+        {storage[5],storage[4]} <= {storage[4],induct[2]}; // After 2 clk pulses, storage[5] contains induct[2]
+//        {storage[7],storage[6]} <= {storage[6],photo}; // After 2 clk pulses, storage[5] contains photo // Is valid for photoreceptor?
+                    // Needs 3x pass filters.
+    end
+    
+    // Module to determine frequency- Out into a wire containing frequency. Compare frequency to parameters (10, 100, 1k Hz)
+        // If match, perform mechanical function.
+        
+        
+    // Module to determine if currently on the track. Check if 1 or 2 is active, if not, 0. If none, reverse and try again.
+        // 1 + 2 have priority, as they dictate turning.
+            // 0 at front or in middle? If at front, there will be periods where none is currently active.
+        // Once turning is necessary, disable primary module and turn, then reactivate. 
+    
+endmodule // Main Project v0_1
