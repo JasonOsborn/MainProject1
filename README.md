@@ -1,5 +1,4 @@
 # MainProject1
-(This is information given by one of the tutors during the verilog tutorial 2/5/19.)
 
 Our project is as follows:
 
