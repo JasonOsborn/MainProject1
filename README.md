@@ -27,3 +27,6 @@ Needed:
     * Store last 1/8th of a second of measurements, determine Hz frequency.
     * If frequency matches 10, 100, or 1k, stop, **deliver cards**.
       * Interrupts and stops track following. ('disable/enable' variable?)
+
+* Always block containing move process, containing nothing but an if statement with the 'enable move' variable and telling the machine to move?
+  * Any time cart stops, disable relevant variable?
