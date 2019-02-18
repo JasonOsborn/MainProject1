@@ -1,28 +1,28 @@
 
 // Movement override;; mailbox detected?
-// CurrentCount[0]++ on IR overrride
+// CurrentlyIR[0]++ on IR overrride
 // After deliver_mail, reset Move, reset detected
 reg detected = 0;
-if (detected && !(CurrentCount[1] == CurrentCount[0]))
+if (detected && !(CurrentlyIR[1] == CurrentlyIR[0]))
 
 	Move = 0;
 	if ( mailbox && detected2)
 		// deliver_mail
-			CurrentCount[1] = CurrentCount[0]
+			CurrentlyIR[1] = CurrentlyIR[0]
 		counter++;
 	else if (mailbox 2 && detected2)
 		// deliver_mail
-			CurrentCount[1] = CurrentCount[0]
+			CurrentlyIR[1] = CurrentlyIR[0]
 		counter++;
 	else if (mailbox 3 && detected2)
 		// deliver_mail
-			CurrentCount[1] = CurrentCount[0]
+			CurrentlyIR[1] = CurrentlyIR[0]
 		counter++;
 	else if (detected2)
 		reverse
 		Move = 1;
 else if (!detected)
-	CurrentCount = 2'b01;
+	CurrentlyIR = 2'b01;
 
 
 // Range of acceptable frequencies
