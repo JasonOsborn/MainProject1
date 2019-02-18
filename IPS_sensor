@@ -1,0 +1,116 @@
+module prox_sensor(input clk, input[2:0] prox_sensor, output reg[3:0] in, output reg EnableA, output reg EnableB, output reg div_clk);   //  EnableA = right motor, EnableB = left motor.
+
+
+      integer counter = 0;
+
+      initial begin
+           in = 0;
+           EnableA = 0;
+           EnableB = 0;
+           div_clk = 0;
+      end
+
+      always @ (posedge div_clk)
+        casex(prox_sensor)
+          // 3'b111:
+          //   begin
+          //   in = 4'b0;
+          //   EnableA = 0;
+          //   EnableB = 0;
+          //   end
+        //  3'b000:
+          //  begin
+          //  in = 4'b0110;
+          //  EnableA = 1;
+            //EnableB = 1;
+            end
+          3'b1x0:
+            begin
+            in = 4'b0101;  //turns right
+            EnableA = 1;
+            EnableB = 1;
+            end
+          3'b0x1:
+            begin
+            in = 4'b1010;
+            EnableA = 1;
+            EnableB = 1;  //turns left
+            end
+          3'b101:
+            begin
+            in = 4'b0110;  //goes forward
+            EnableA = 1;
+            EnableB = 1;
+            end
+          default:
+            begin
+            in = 4'b0;
+            EnableA = 0;    //stops rover if there is no metal tape
+            EnableB = 0;
+            end
+        endcase
+
+        always @(posedge clk) begin
+         if (counter == 8'h00) begin   //slows down the rover slightly
+       	     div_clk <= ~div_clk;
+
+       	     counter <= 1;
+         end
+
+       			// Else count down
+         else begin
+       	    counter <= counter - 1;
+         end
+        end
+
+
+      // always @(posedge clk) begin
+     //
+     //       if (prox_sensor == 3'b111) begin
+     //          in <= 4'b0000;
+     //          moveEnable <= 0;  //stops rover
+     //       end
+     //
+     //       else if (prox_sensor == 3'b110 || prox_sensor == 3'b100) begin
+     //
+     //            //turn left
+     //            //moveEnable <= 1;
+     //            moveEnable <= 0;
+     //
+     //            in <= 4'b0101;
+     //       end
+     //
+     //       else if (prox_sensor == 3'b011 || prox_sensor == 3'b001) begin
+     //
+     //             //turn right
+     //             //moveEnable <= 1;
+     //             moveEnable <= 0;
+     //
+     //             in <= 4'b1010;
+     //       end
+     //
+     //       else if (prox_sensor == 3'b101) begin
+     //
+     //             //move forward
+     //             //moveEnable <= 1;
+     //             moveEnable <= 0;
+     //
+     //             in <= 4'b1001;
+     //       end
+     //
+     // end
+     //
+     // always @(posedge clk) begin
+     //
+     //      if(!moveEnable) begin
+     //         EnableB <= 0;
+     //         EnableA <= 0;
+     //      end
+     //      else if (moveEnable) begin
+     //          EnableA <= 1;
+     //          EnableB <= 1;
+     //      end
+     //  end
+
+
+endmodule
