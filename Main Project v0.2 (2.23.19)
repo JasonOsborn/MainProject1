@@ -1,0 +1,167 @@
+`timescale 1ns / 1ps
+
+module MainProjv0_2(
+    input clk, // Clock
+    input [2:0]prox_sensor, // IPS sensor // Movement
+    input signal, // IR signal
+    input LookForFreq, // Enables frequency calculation
+    output reg [3:0]in, // H-bridge input pins // Movement
+    output reg EnableA, // Right motor // Movement
+    output reg EnableB, // Left motor // Movement
+    output reg div_clk, // Divided clock? // Movement
+    output reg [1:0]Mail_Counter, // How much mail's been delivered?
+    output reg [10:0]freq = 0, // Calculated Frequency // IR signal
+    output reg FreqDecided = 0 // Do we have a frequency yet? // IR signal
+
+    );
+
+      integer counter = 0; // Rover speed control
+      
+      localparam max = 'd50; // 1/8th second
+        
+      reg [31:0] ClockCount = 32'd0; // How many pulses have passed? Have they exceeded localparam max?
+      reg [31:0] signal_count = 32'd0; // How many signal pulses did we see in 1/8th of a second?
+        
+      reg last_sig;
+      reg middle_sig;
+      reg final_sig; // Last/final_sig = d flip flop to ensure that signal is changing
+      
+      reg [1:0] state; // {next state, current state}
+      
+      initial begin
+           in = 0;
+           EnableA = 0;
+           EnableB = 0;
+           div_clk = 0;
+      end
+      
+// IPS-sensor based movement
+      always @ (posedge div_clk) // Movement based on IPS sensor
+        casex(prox_sensor)
+          3'b1x0:
+            begin
+            in = 4'b0101;  //turns right
+            EnableA = 1;
+            EnableB = 1;
+            end
+          3'b0x1:
+            begin
+            in = 4'b1010;
+            EnableA = 1;
+            EnableB = 1;  //turns left
+            end
+          3'b101:
+            begin
+            in = 4'b0110;  //goes forward
+            EnableA = 1;
+            EnableB = 1;
+            end
+          default:
+            begin
+            in = 4'b0;
+            EnableA = 0;    //stops rover if there is no metal tape
+            EnableB = 0;
+            end
+        endcase
+
+// Clock divider (1:2)
+        always @(posedge clk) begin
+           if (counter == 8'h00) begin   //slows down the rover slightly
+     	     div_clk <= ~div_clk;
+       	     counter <= 1;
+         end
+       			// Else count down
+         else begin
+       	    counter <= counter - 1;
+         end
+        end
+
+// Frequency Counter
+        always @(posedge clk) // D-flip flop 
+            begin
+                last_sig <= signal;
+                middle_sig <= last_sig;
+                final_sig <= middle_sig;
+            end
+        
+        always @(posedge clk)
+        begin
+            if (~LookForFreq)
+                begin
+                    freq = 0;
+                    signal_count = 0;
+                    ClockCount = 0;
+                    FreqDecided = 0;
+                end
+            else
+                begin
+                    if (ClockCount < max)
+                        begin
+                            ClockCount = ClockCount + 1;
+                            if (middle_sig & ~final_sig)
+                                signal_count = signal_count + 1;
+                        end
+                    else
+                        begin
+                            freq = signal_count * 16;
+                            signal_count = 0;
+                            ClockCount = 0;
+                            FreqDecided = 1;
+                        end
+                end
+        end
+endmodule
+
+module NextState(
+    input clk,
+    input [1:0]StateChangingVariables, // 1- Signal detect, 2- Mail delivered, 3- left+right detect, 0- none
+    output reg [2:0] CurrentState
+        // State Summaries:
+            // 0 - (Default) Move forward along track, look for IR signal
+            // *1 - (On initial signal detect) Stop, determine signal, deliver mail, move -> 2
+            // *2 - (After Mail Delivery) Move forward along track, do NOT look for IR signal, temporary state.
+                // -> Return to Default
+            // *3 - (Both Left and Right IPS detect)
+                // All mail delivered? Stop
+                // All mail NOT delivered? Move forward until not both, -> return to Default
+            // Else, reset to 0
+    );
+    
+    reg [2:0] nextState;
+    
+always @(posedge clk)
+    begin
+        nextState = 0;
+        case(CurrentState)
+            0:  begin // Currently Default: Move forward, look for signal
+                if(StateChangingVariables == 1) // Signal detected?
+                    nextState = 1; // Deliver mail.
+                else if(StateChangingVariables == 3) // Left+Right both detected?
+                    nextState = 3; // Start or Stop
+                end
+            1:  begin // Currently delivering mail
+                if(StateChangingVariables == 2) // Mail delivered?
+                    nextState = 2; // Move forward, NOT look for signal.
+                end
+            2:  begin // Moving forward, NOT looking for signal
+// NEEDS UPDATING: Not complete, needs to account for excess IR signal post-delivery
+                if(StateChangingVariables == 0) // 
+                    nextState = 0;
+                end
+            3:  begin // Both L+R IR sensor detect? Check if need to stop.
+                if(StateChangingVariables == 1)
+                    nextState = 0; // POSSIBLE: Make new state for perma stop?
+                end
+            default: // Case 0
+                begin // Currently Default: Move forward, look for signal
+                if(StateChangingVariables == 1) // Signal detected?
+                    nextState = 1; // Deliver mail.
+                else if(StateChangingVariables == 3) // Left+Right both detected?
+                    nextState = 3; // Start or Stop
+                end
+        endcase
+end 
+
+always @(posedge clk) // always block to update state
+    CurrentState <= nextState; 
+endmodule
