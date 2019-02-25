@@ -1,33 +1,49 @@
 `timescale 1ns / 1ps
 
 module MainProjv0_2(
+    // Primary Inputs
     input clk, // Clock
     input [2:0]prox_sensor, // IPS sensor // Movement
     input signal, // IR signal
+    
+// May change to reg. Why input?
     input LookForFreq, // Enables frequency calculation
+    
+    // Output to H-bridge
     output reg [3:0]in, // H-bridge input pins // Movement
     output reg EnableA, // Right motor // Movement
     output reg EnableB, // Left motor // Movement
+    
+// Why are these outputs?
     output reg div_clk, // Divided clock? // Movement
-    output reg [1:0]Mail_Counter, // How much mail's been delivered?
-    output reg [10:0]freq = 0, // Calculated Frequency // IR signal
-    output reg FreqDecided = 0 // Do we have a frequency yet? // IR signal
-
+    output reg [1:0]Mail_Counter // How much mail's been delivered?
     );
 
+      reg FreqDecided = 0;
+      reg [10:0]freq = 0;
       integer counter = 0; // Rover speed control
+      reg [2:0]state = 0; // Controls behavior of rover // initial = 0/default
       
-      localparam max = 'd1_250_000; // 1/8th second
-        
-      reg [31:0] ClockCount = 32'd0; // How many pulses have passed? Have they exceeded localparam max?
-      reg [31:0] signal_count = 32'd0; // How many signal pulses did we see in 1/8th of a second?
-        
-      reg last_sig;
-      reg middle_sig;
-      reg final_sig; // Last/final_sig = d flip flop to ensure that signal is changing
+      // Possibly temporary? State machine related vars
+      reg SignalDetected = 0;
+      reg MailDelivered = 0;
       
-      reg [2:0] state; // {next state, current state}
       
+FreqCounter MeasureFrequency(.clk(clk), .signal(signal), .LookForFreq(LookForFreq), .freq(freq), .FreqDecided(FreqDecided), .SignalDetected(SignalDetected));
+    // clk = clk ==> clock
+    // signal = signal ==> IR signal input
+    // LookForFreq = LookForFreq ==> bit flag if we're looking for the frequency. May relate to state instead?
+    // freq = freq ==> Actual frequency determined from signal
+    // FreqDecided = FreqDecided ==> bit flag we've determined what frequency is. May relate to state instead?
+    // SignalDetected = SignalDetected ==> bit flag noting that signal has been detected.
+    
+nextState DetermineState(.clk(clk), .CurrentState(state[0]), .StateChangingVariables({0,MailDelivered,SignalDetected}));
+    // Clk = clk ==> clock
+    // Current state = state[0] ==> State determination
+    // StateChanginVariables = {0,MailDelivered,SignalDetected} ==> Left/Right set to 0 for now, MailDelivered to be noted and reset as needed, SignalDetected to be enabled while a signal is detected. Mechanics needed for all 3 of these.
+
+
+//Supposed to use initial begin? No idea.
       initial begin
            in = 0;
            EnableA = 0;
@@ -37,31 +53,67 @@ module MainProjv0_2(
       
 // IPS-sensor based movement
       always @ (posedge div_clk) // Movement based on IPS sensor
-        casex(prox_sensor)
-          3'b1x0:
-            begin
-            in = 4'b0101;  //turns right
-            EnableA = 1;
-            EnableB = 1;
-            end
-          3'b0x1:
-            begin
-            in = 4'b1010;
-            EnableA = 1;
-            EnableB = 1;  //turns left
-            end
-          3'b101:
-            begin
-            in = 4'b0110;  //goes forward
-            EnableA = 1;
-            EnableB = 1;
-            end
-          default:
-            begin
-            in = 4'b0;
-            EnableA = 0;    //stops rover if there is no metal tape
-            EnableB = 0;
-            end
+          casex(state)
+            3'b0x0: // case 0 or case 2
+                casex(prox_sensor) // Default movement.
+                  3'b1x0:
+                    begin
+                        in = 4'b0101;  //turns right
+                        EnableA = 1;
+                        EnableB = 1;
+                    end
+                  3'b0x1:
+                    begin
+                        in = 4'b1010;
+                        EnableA = 1;
+                        EnableB = 1;  //turns left
+                    end
+                  3'b101:
+                    begin
+                        in = 4'b0110;  //goes forward
+                        EnableA = 1;
+                        EnableB = 1;
+                    end
+                  default:
+                    begin
+                        in = 4'b0;
+                        EnableA = 0;    //stops rover if there is no metal tape
+                        EnableB = 0;
+                    end
+                endcase
+            3'b0x1: // case 1 or 3. (Change to 3'b001 if current case 3 (L+R) is removed.)
+                begin // Stop until further notice.
+                    in = 4'b0;
+                    EnableA = 0;
+                    EnableB = 0;
+                end
+            default: //fallthrough: move forward on track.
+                casex(prox_sensor) // Default movement.
+                  3'b1x0:
+                    begin
+                        in = 4'b0101;  //turns right
+                        EnableA = 1;
+                        EnableB = 1;
+                    end
+                  3'b0x1:
+                    begin
+                        in = 4'b1010;
+                        EnableA = 1;
+                        EnableB = 1;  //turns left
+                    end
+                  3'b101:
+                    begin
+                        in = 4'b0110;  //goes forward
+                        EnableA = 1;
+                        EnableB = 1;
+                    end
+                  default:
+                    begin
+                        in = 4'b0;
+                        EnableA = 0;    //stops rover if there is no metal tape
+                        EnableB = 0;
+                    end
+                endcase
         endcase
 
 // Clock divider (1:2)
@@ -75,43 +127,10 @@ module MainProjv0_2(
        	    counter <= counter - 1;
          end
         end
-
-// Frequency Counter
-        always @(posedge clk) // D-flip flop 
-            begin
-                last_sig <= signal;
-                middle_sig <= last_sig;
-                final_sig <= middle_sig;
-            end
-        
-        always @(posedge clk)
-        begin
-            if (~LookForFreq)
-                begin
-                    freq = 0;
-                    signal_count = 0;
-                    ClockCount = 0;
-                    FreqDecided = 0;
-                end
-            else
-                begin
-                    if (ClockCount < max)
-                        begin
-                            ClockCount = ClockCount + 1;
-                            if (middle_sig & ~final_sig)
-                                signal_count = signal_count + 1;
-                        end
-                    else
-                        begin
-                            freq = signal_count * 16;
-                            signal_count = 0;
-                            ClockCount = 0;
-                            FreqDecided = 1;
-                        end
-                end
-        end
 endmodule
 
+
+// State Machine
 module nextState(
     input clk,
     input [2:0]StateChangingVariables, // 1- Signal detect, 2- Mail delivered, 4- left+right detect, 0- none
@@ -120,6 +139,7 @@ module nextState(
         // State Summaries:
             // 0 - (Default) Move forward along track, look for IR signal
             // *1 - (On initial signal detect) Stop, determine signal, deliver mail, move -> 2
+// Needs to be more stages?
             // *2 - (After Mail Delivery) Move forward along track, do NOT look for IR signal, temporary state.
                 // -> Return to Default
             // *3 - (Both Left and Right IPS detect)
@@ -136,39 +156,107 @@ always @(posedge clk)
         nextState = 0;
         case(CurrentState)
             0:  begin // Currently Default: Move forward, look for signal
-                    if(StateChangingVariables == 1) // Signal detected?
+                    if(StateChangingVariables[0] == 1) // Signal detected?
                         nextState = 1; // Deliver mail.
-                    else if(StateChangingVariables == 4) // Left+Right both detected?
+                    else if(StateChangingVariables[2] == 1) // Left+Right both detected?
                         nextState = 3; // Start or Stop
 // Account for states of 5,6,7? (Multi-active bits?)
                 end
             1:  begin // Currently delivering mail
                     // No Change? Stay in state.
                     // Signal detected? Stay in state.
-                    if(StateChangingVariables == 2) // Mail delivered?
+                    if(StateChangingVariables[1] == 1) // Mail delivered?
                         nextState = 2; // Move forward, NOT look for signal.
                 end
             2:  begin // Moving forward, NOT looking for signal
-                    if(StateChangingVariables == 0) // If NO signal, return to default (?)
+                    if(StateChangingVariables[0] == 0) // If NO signal, return to default (?)
                         nextState = 0;
                     // Signal Detected? Stay in state.
                     // Mail Delivered? Stay in state. (Don't care)
                 end
             3:  begin // Both L+R IR sensor detect? Check if need to stop.
-                    if(StateChangingVariables == 1)
+                    if(StateChangingVariables[0] == 1)
                         nextState = 0;
 // POSSIBLE: Make new state for perma stop? Probably not necessary- Stage 3 might be possible to incorporate entirely into main code block.
                 end
             default: // Case 0 COPY
                 begin // Currently Default: Move forward, look for signal
-                    if(StateChangingVariables == 1) // Signal detected?
+                    if(StateChangingVariables[0] == 1) // Signal detected?
                         nextState = 1; // Deliver mail.
                     else if(StateChangingVariables == 3) // Left+Right both detected?
                         nextState = 3; // Start or Stop
                 end
         endcase
-end 
+end
 
 always @(posedge clk) // always block to update state
     CurrentState <= nextState; 
+endmodule
+
+
+// Frequency Counter
+module FreqCounter(
+                    input clk,
+                    input signal,
+                    input LookForFreq,
+                    output reg [10:0]freq, // Calculated Frequency // IR signal
+                    output reg FreqDecided, // Do we have a frequency yet? // IR signal
+                    output reg SignalDetected
+                        );
+    
+      reg last_sig;
+      reg middle_sig;
+      reg final_sig; // Last/middle/final_sig = d flip flop to ensure that signal is changing
+      
+      localparam max = 'd1_250_000; // 1/8th second
+      
+      reg [31:0] ClockCount = 32'd0; // How many pulses have passed? Have they exceeded localparam max?
+      reg [31:0] signal_count = 32'd0; // How many signal pulses did we see in 1/8th of a second? (incremented on posedge of signal)
+    
+        always @(posedge clk) // D-flip flop 
+            begin
+                last_sig <= signal;
+                middle_sig <= last_sig;
+                final_sig <= middle_sig;
+            end
+        
+        always @(posedge clk)
+        begin
+            if (~LookForFreq) // reset
+                begin
+                    freq = 0;
+                    signal_count = 0;
+                    ClockCount = 0;
+                    FreqDecided = 0;
+                    SignalDetected = 0;
+                end
+            else
+                begin
+                    if (ClockCount < max)
+                        begin
+                            ClockCount = ClockCount + 1;
+                            if (middle_sig & ~final_sig) begin // posedge of signal
+                                signal_count = signal_count + 1; // inc. signal counter
+                                SignalDetected = 1; // note signal exists
+                            end
+                        end
+                    else // 1/8th second passed
+                        begin
+                            freq = signal_count * 16; // calculate freq based on signal counter
+                            signal_count = 0; // reset signal counter
+                            ClockCount = 0; // reset clock count
+                            FreqDecided = 1; // note frequency decided
+                        end
+                end
+        end
+endmodule
+
+
+//Actually deliver mail. EMPTY at the moment.
+module DeliverMail(
+                    input clk,
+                    input freq,
+                    output reg MailDelivered
+    );
+
 endmodule
