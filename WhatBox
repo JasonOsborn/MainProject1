@@ -1,0 +1,59 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 03/18/2019 11:35:57 AM
+// Design Name: 
+// Module Name: freq_led_test
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module WhatBox(
+    input clk,
+    input [10:0]freq, // Frequency
+    input Decided,
+    input ResetState,
+    output reg [1:0]mailbox, // 0,1,2- 3 different boxes
+    output reg KeepLooking // None of the mailboxes- Try again.
+    );
+    
+    initial begin
+        KeepLooking = 1;
+        mailbox = 2'b00;
+    end
+    
+    always @(posedge clk) begin
+        if (Decided) begin
+                if ((freq <= 40) && (freq >= 2)) begin // 10 Hz
+                    mailbox = 2'b01;
+                    KeepLooking = 0;
+                end
+                if ((freq <= 150) && (freq >= 70)) begin // 100 Hz
+                    mailbox = 2'b10;
+                    KeepLooking = 0;
+                end
+                if ((freq <= 1016) && (freq >= 984)) begin // 1k Hz
+                    mailbox = 2'b11;
+                    KeepLooking = 0;
+                end
+                else
+                    KeepLooking = 1;
+        end
+        else if (ResetState) begin
+            KeepLooking = 1;
+        end
+            
+    end
+endmodule
