@@ -1,0 +1,177 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 03/23/2019 03:52:39 PM
+// Design Name: 
+// Module Name: MainProjectv0_5
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module MainProjectv0_5(
+    // Primary Inputs
+    input clk, // Clock
+    input [2:0]prox_sensor, // IPS sensor // Movement
+    input [1:0]signal, // IR signal
+    
+    // Output to H-bridge
+    output reg [3:0]in, // H-bridge input pins // Movement
+    output reg EnableA, // Right motor // Movement
+    output reg EnableB // Left motor // Movement
+    );
+
+// Frequency Calculation
+      wire [1:0]FreqDecided = 2'b00;
+      
+      // Can probably be consolidated.
+      wire [10:0]frequencyL;
+      wire [10:0]frequencyR;
+
+// Rover speed control
+      integer counter = 0;
+      reg div_clk = 0;
+      
+// State Machine
+      wire [2:0]state; // Controls behavior of rover // initial = 0/default
+
+// Possibly temporary? State machine related vars
+      wire SignalDetected;
+      reg MailDelivered = 0;
+      reg [2:0]Mail_Counter;
+      
+      reg [1:0]MailboxNum;
+    
+// Frequency Counter activation.
+    reg LookForFreq; // Enables frequency calculation
+      
+// LEFT 
+FreqCounter MeasureFrequency1(.clk(clk), .signal(signal[0]), .LookForFreq(LookForFreq), .freq(frequencyL), .FreqDecided(FreqDecided[0]), .SignalDetected(SignalDetected));
+    // clk = clk ==> clock
+    // signal[0] = signal ==> IR signal input of LEFT side
+    // LookForFreq = LookForFreq ==> bit flag if we're looking for the frequency. May relate to state instead?
+    // freq = frequency ==> Actual frequency determined from signal
+    // FreqDecided = FreqDecided ==> bit flag we've determined what frequency is. May relate to state instead?
+    // SignalDetected = SignalDetected ==> bit flag noting that signal has been detected.
+    
+    
+// RIGHT
+FreqCounter MeasureFrequency2(.clk(clk), .signal(signal[1]), .LookForFreq(LookForFreq), .freq(frequencyR), .FreqDecided(FreqDecided[1]), .SignalDetected(SignalDetected));
+    // clk = clk ==> clock
+    // signal[1] = signal ==> IR signal input of RIGHT side
+    // LookForFreq = LookForFreq ==> bit flag if we're looking for the frequency. May relate to state instead?
+    // freq = frequency ==> Actual frequency determined from signal
+    // FreqDecided = FreqDecided ==> bit flag we've determined what frequency is. May relate to state instead?
+    // SignalDetected = SignalDetected ==> bit flag noting that signal has been detected.
+    
+// State Machine    
+nextState DetermineState(.clk(clk), .CurrentState(state), .StateChangingVariables({0,MailDelivered,SignalDetected}));
+    // Clk = clk ==> clock
+    // CurrentState = state[0] ==> State determination
+    // StateChanginVariables = {0,MailDelivered,SignalDetected} ==> Left/Right set to 0 for now, MailDelivered to be noted and reset as needed, SignalDetected to be enabled while a signal is detected. Mechanics needed for all 3 of these.
+
+// Determine Mailbox
+WhatBox WhatBoxL(.clk(clk),.freq(frequencyL), .Decided(FreqDecided[0]), .mailbox (MailboxNum), .KeepLooking(LookForFreq));
+WhatBox WhatBoxR(.clk(clk),.freq(frequencyR), .Decided(FreqDecided[1]), .mailbox (MailboxNum), .KeepLooking(LookForFreq));
+  // clk = clk ==> clock
+  // freq = frequency(L/R) ==> frequency of the input signal on either side.
+  // Decided = FreqDecided[0/1] ==> Activation bit, based on whether or not a frequency has been calculated.
+  
+  // mailbox = MailboxNum ==> which of the 3 mailboxes we're at.
+  // KeepLooking = LookForFreq ==> If none of the mailboxes are reached, determine frequency again. Assumes 0 otherwise.
+
+//Supposed to use initial begin? No idea.
+      initial begin
+           in = 0;
+           EnableA = 0;
+           EnableB = 0;
+           div_clk = 0;
+      end
+      
+// IPS-sensor based movement
+      always @ (posedge div_clk) // Movement based on IPS sensor
+          casex(state)
+            3'b0x0: // case 0 or case 2
+                casex(prox_sensor) // Default movement.
+                  3'b1x0:
+                    begin
+                        in = 4'b0101;  //turns right
+                        EnableA = 1;
+                        EnableB = 1;
+                    end
+                  3'b0x1:
+                    begin
+                        in = 4'b1010;
+                        EnableA = 1;
+                        EnableB = 1;  //turns left
+                    end
+                  3'b101:
+                    begin
+                        in = 4'b0110;  //goes forward
+                        EnableA = 1;
+                        EnableB = 1;
+                    end
+                  default:
+                    begin
+                        in = 4'b0;
+                        EnableA = 0;    //stops rover if there is no metal tape
+                        EnableB = 0;
+                    end
+                endcase
+            3'b0x1: // case 1 or 3. (Change to 3'b001 if current case 3 (L+R) is removed.)
+                begin // Stop until further notice.
+                    in = 4'b0;
+                    EnableA = 0;
+                    EnableB = 0;
+                end
+            default: //fallthrough: move forward on track.
+                casex(prox_sensor) // Default movement.
+                  3'b1x0:
+                    begin
+                        in = 4'b0101;  //turns right
+                        EnableA = 1;
+                        EnableB = 1;
+                    end
+                  3'b0x1:
+                    begin
+                        in = 4'b1010;
+                        EnableA = 1;
+                        EnableB = 1;  //turns left
+                    end
+                  3'b101:
+                    begin
+                        in = 4'b0110;  //goes forward
+                        EnableA = 1;
+                        EnableB = 1;
+                    end
+                  default:
+                    begin
+                        in = 4'b0;
+                        EnableA = 0;    //stops rover if there is no metal tape
+                        EnableB = 0;
+                    end
+                endcase
+        endcase
+
+// Clock divider (1:2)
+        always @(posedge clk) begin
+           if (counter == 8'h00) begin   //slows down the rover slightly
+     	     div_clk <= ~div_clk;
+       	     counter <= 1;
+         end
+         else begin // Else count down
+       	    counter <= counter - 1;
+         end
+        end
+endmodule
