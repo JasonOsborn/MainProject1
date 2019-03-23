@@ -1,0 +1,90 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 03/04/2019 11:19:32 AM
+// Design Name: 
+// Module Name: nextState
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+// State Machine
+
+
+// Needs reworking - More dependent on MailDelivered, MUCH less on SignalDetected.
+    // 0->1 on SignalDetected
+    // 1->2 on MailDelivered
+    // 2->0 on reset of Mail Delivered? (possible after soft delay)
+
+module nextState(
+    input clk,
+    input [2:0]StateChangingVariables, // 1- Signal detect, 2- Mail delivered, 4- left+right detect, 0- none
+        // 210; 2{Left/Right} 1{Mail Delivered} 0{Signal Detect}
+    output reg [2:0] CurrentState
+        // State Summaries:
+            // 0 - (Default) Move forward along track, look for IR signal
+            // *1 - (On initial signal detect) Stop, determine signal, deliver mail, move -> 2
+// Needs to be more stages?
+            // *2 - (After Mail Delivery) Move forward along track, do NOT look for IR signal, temporary state.
+                // -> Return to Default
+            // *3 - (Both Left and Right IPS detect)
+                // All mail delivered? Stop
+                // All mail NOT delivered? Move forward until not both, -> return to Default
+                // Able to push into primary case statement in main code block?
+            // Else, reset to 0
+    );
+    
+    reg [2:0] nextState;
+    initial begin
+        CurrentState <= 0;
+        nextState <= 0;
+    end
+    
+always @(posedge clk)
+    begin
+            case(CurrentState)
+                0:  begin // Currently Default: Move forward, look for signal
+                        if(StateChangingVariables[0] == 1) // Signal detected?
+                            nextState = 1; // Deliver mail.
+                        else if(StateChangingVariables[2] == 1) // Left+Right both detected?
+                            nextState = 3; // Start or Stop
+    // Account for states of 5,6,7? (Multi-active bits?)
+                    end
+                1:  begin // Currently delivering mail
+                        if(StateChangingVariables[1] == 1) // Mail delivered?
+                            nextState = 2; // Move forward, NOT look for signal.
+                    end
+                2:  begin // Moving forward, NOT looking for signal
+                        if(StateChangingVariables[1] == 0) // If NMail Delivery is reset, move to 0?
+                            nextState = 0;
+                    end
+                3:  begin // Both L+R IR sensor detect? Check if need to stop.
+                        if(StateChangingVariables[0] == 1)
+                            nextState = 0;
+    // POSSIBLE: Make new state for perma stop? Probably not necessary- Stage 3 might be possible to incorporate entirely into main code block.
+                    end
+                default: // Case 0 COPY
+                    begin // Currently Default: Move forward, look for signal
+                        if(StateChangingVariables[0] == 1) // Signal detected?
+                            nextState = 1; // Deliver mail.
+                        else if(StateChangingVariables == 4) // Left+Right both detected?
+                            nextState = 3; // Start or Stop
+                    end
+            endcase
+    end
+
+always@(posedge clk)
+    CurrentState <= nextState;
+
+endmodule
