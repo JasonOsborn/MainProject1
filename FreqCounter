@@ -1,0 +1,92 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 03/04/2019 11:18:39 AM
+// Design Name: 
+// Module Name: FreqCounter
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+
+// Frequency Counter
+module FreqCounter(
+                    input clk,
+                    input signal,
+                    input LookForFreq,
+                    output reg [10:0]freq, // Calculated Frequency // IR signal
+                    output reg FreqDecided, // Do we have a frequency yet? // IR signal
+                    output reg SignalDetected
+                        );
+    
+      reg last_sig;
+      reg middle_sig;
+      reg final_sig; // Last/middle/final_sig = d flip flop to ensure that signal is changing
+      
+      localparam max = 'd20_000_000; // 1/5th second
+      //localparam max = 'd50;
+      
+      reg [31:0] ClockCount = 32'd0; // How many pulses have passed? Have they exceeded localparam max?
+      reg [31:0] signal_count = 32'd0; // How many signal pulses did we see in 1/8th of a second? (incremented on posedge of signal)
+      
+      initial begin
+        last_sig <= 0;
+        middle_sig <= 0;
+        final_sig <= 0;
+        
+        ClockCount <= 0;
+        signal_count <= 0;
+        freq <= 0;
+        FreqDecided <= 0;
+        SignalDetected <= 0;
+      end
+        
+        always @(posedge clk) // D-flip flop 
+            begin
+                    last_sig <= signal;
+                    middle_sig <= last_sig;
+                    final_sig <= middle_sig;
+            end
+        
+        always @(posedge clk)
+        begin
+            if (~LookForFreq) // reset
+                begin
+                    freq = 0;
+                    signal_count = 0;
+                    ClockCount = 0;
+                    FreqDecided = 0;
+                    SignalDetected = 0;
+                end
+            else
+                begin
+                    if (ClockCount < max)
+                        begin
+                            ClockCount = ClockCount + 1;
+                            if (middle_sig & ~final_sig) begin // posedge of signal
+                                signal_count = signal_count + 1; // inc. signal counter
+                                SignalDetected = 1; // note signal exists
+                            end
+                        end
+                    else // 1/5th second passed
+                        begin
+                            freq = signal_count * 5; // calculate freq based on signal counter
+                            signal_count = 0; // reset signal counter
+                            ClockCount = 0; // reset clock count
+                            FreqDecided = 1; // note frequency decided
+                        end
+                end
+        end
+endmodule
