@@ -1,0 +1,50 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 03/23/2019 04:00:10 PM
+// Design Name: 
+// Module Name: MailCannon
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module MailCannon(
+                    input clk,
+                    input [1:0]MailboxNum, // Which box are we at?
+                    output reg MailDelivered, // Is this delivery done?
+                    output reg [2:0]MailCounter // Increment done
+    );
+    
+    reg SoftDelayStart = 0;
+    reg SoftDelay = 100_000_000;
+    
+    always@(posedge clk) begin
+        if(MailboxNum[1]) begin
+            // Launch 10 Hz mail
+        end
+        else if (MailboxNum[2]) begin
+            // Launch 100 Hz mail
+        end
+        else if (MailboxNum[3]) begin
+            // Launch 1k Hz mail
+        end
+        if (SoftDelayStart) begin
+            while (SoftDelay > 1)
+                SoftDelay = SoftDelay - 1;
+            SoftDelay = 100_000_000;
+        end
+    end
+    
+endmodule
