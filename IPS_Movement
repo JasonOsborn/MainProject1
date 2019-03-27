@@ -1,0 +1,128 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 03/26/2019 07:08:19 PM
+// Design Name: 
+// Module Name: IPS_Movement
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module IPS_Movement(
+    input clk,                  // Clock
+    input [2:0]prox_sensor,     // IPS sensor // Movement
+    input [1:0]state,           // State controller
+    input [1:0]Mail_Counter,    // Mail Counter
+
+    output reg [3:0]in,         // H-bridge input pins
+    output reg EnableA,         // Right motor
+    output reg EnableB          // Left motor
+
+    );
+    
+
+    // Rover movement control
+      reg delay = 0;            // Delays clock
+      reg div_clk = 0;          // 1/2 clock
+      reg Moving = 0;           // Activation bit
+
+
+// IPS-based movement.
+      initial begin
+           in = 0;
+           EnableA = 0;
+           EnableB = 0;
+           div_clk = 0;
+           delay = 0;
+           Moving = 0;
+      end
+      
+      always @ (posedge clk) // Movement based on IPS sensor
+          casex(state) // Primary state machine
+            3'b000: // case 0
+                Moving = 1;
+            3'b001: // case 1
+                Moving = 0;
+            3'b010: // case 2
+                Moving = 0;
+            3'b011: // case 3
+                Moving = 1;
+            default: //fallthrough: move forward on track.
+                Moving = 1;
+        endcase
+
+    always @(posedge div_clk) begin
+        if(Moving) begin
+            casex(prox_sensor) // Proximity Sensor state machine
+                3'b1x0:
+                    begin
+                        in = 4'b0101;  //turns right
+                        EnableA = 1;
+                        EnableB = 1;
+                    end
+                3'b0x1:
+                    begin
+                        in = 4'b1010;
+                        EnableA = 1;
+                        EnableB = 1;  //turns left
+                    end
+                3'b101:
+                    begin
+                        in = 4'b0110;  //goes forward
+                        EnableA = 1;
+                        EnableB = 1;
+                    end
+                3'b000: // Detects all three
+                    begin
+                        if (Mail_Counter >= 3) begin
+                            in = 4'b0;
+                            EnableA = 0;
+                            EnableB = 0;
+                        end
+                        else begin
+                            in = 4'b0110;  //goes forward
+                            EnableA = 1;
+                            EnableB = 1;
+                        end
+                    end
+                default:
+                    begin
+                        in = 4'b0;
+                        EnableA = 0;    //stops rover if there is no metal tape
+                        EnableB = 0;
+                    end
+                endcase
+            end
+        else begin
+            begin // Stop until further notice.
+                in = 4'b0;
+                EnableA = 0;
+                EnableB = 0;
+            end
+        end
+    end
+            
+
+// Clock divider (1:2)
+    always @(posedge clk) begin
+        if (!delay) begin   //slows down the rover by 1/2
+            div_clk <= ~div_clk;
+            delay <= 1;
+        end
+        else
+            delay <= 0;
+    end
+    
+endmodule
