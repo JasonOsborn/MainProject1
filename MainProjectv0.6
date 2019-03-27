@@ -1,0 +1,108 @@
+`timescale 1ns / 1ps
+
+module MainProjectv0_6(
+    // Hardware Inputs
+    input clk,                  // Clock
+    input [2:0]prox_sensor,     // IPS sensor // Movement
+    input [1:0]signal,          // IR signal // Delivery
+    
+    // Hardware Outputs
+        // Movement
+    output reg [3:0]in,         // H-bridge input pins
+    output reg EnableA,         // Right motor
+    output reg EnableB,         // Left motor
+    
+        // Delivery
+    output [5:0] motors         // Mail launch motors
+    );
+    
+// Variable Declerations
+      // Frequency values
+        // Reset on state 2 [nextState -> FreqDecided]
+      wire [10:0]frequencyL;
+      wire [10:0]frequencyR;
+      
+    // State Machine/Control wires
+      wire [1:0]state;          // Controls behavior of rover       // initial = 0/default [nextState]
+      
+      wire [2:0]FreqDecided;         // Frequency calculation done bit.  // Resets on MailboxNum calculation [WhatBox -> FreqDecided]
+      wire SecondsDone;         // Software delay done bit.         // Resets after 1 second. [SecondCountdown]
+      wire [2:0]SignalDetected;      // IR sensor initial pulse bit.     // Resets on MailboxNum calculation [WhatBox -> FreqDecided]
+      wire MailDelivered;       // Motor activation bit.            // Resets on state 0. [nextState -> MailCannon]
+      
+      wire [1:0]MailboxNum;     // Which mailbox is it at?          // Resets on state 0. [nextState -> WhatBox]
+      wire MailboxSide;         // Which side is mailbox on?        // Resets on state 0. [nextState -> WhatBox]
+      wire [1:0]Mail_Counter;   // Counts mail deliveries.          // Does Not Reset.
+
+      
+
+// Sub-module calls
+
+// Frequency Counter
+FreqCounter MeasureFrequencyL(.clk(clk), .signal(signal[0]), .state(state), .freq(frequencyL), .FreqDecided(FreqDecided[0]), .SignalDetected(SignalDetected[0]));
+FreqCounter MeasureFrequencyR(.clk(clk), .signal(signal[1]), .state(state), .freq(frequencyR), .FreqDecided(FreqDecided[1]), .SignalDetected(SignalDetected[1]));
+    // IN
+        // clk = clock
+        // signal[n] = signal ==> IR signal input of each side
+        // state = In state 0, search for signal, else, reset.
+            // In state 2, reset freq
+        // freq[L/R] = frequency ==> Calculated frequency
+    // OUT
+        // FreqDecided[L/R] = FreqDecided ==> bit flag noting signal has been decided
+        // SignalDetected[L/R] = state control variable noting signal detection ( state 0->1)
+    assign FreqDecided[2] = (FreqDecided[0] || FreqDecided[1]); // If either has calculated a frequency, move on (frequency calc).
+    assign SignalDetected[2] = (SignalDetected[0] || SignalDetected[1]); // If either has noticed a signal, move on (state machine).
+    
+// State Machine
+nextState DetermineState(.clk(clk), .CurrentState(state), .StateVars({SecondsDone,MailDelivered,SignalDetected[2]}));
+    // IN
+        // clk = clock
+        // StateVars =>
+            // SecondsDone = 2->3 / 3->0 state change control
+            // MailDelivered = 1->2 state change control
+            // SignalDetected[2] = 0->1 state change control
+    // OUT
+        // CurrentState = state
+
+// Determine Mailbox
+WhatBox WhichBox(.clk(clk),.freqL(frequencyL), .freqR(frequencyR), .Decided(FreqDecided[2]), .state(state), .MailboxNum (MailboxNum[1:0]), .Side(MailboxSide));
+  // IN
+      // clk = clk ==> clock
+      // frequency[L/R] ==> frequency of the input signal on either side.
+      // FreqDecided ==> Activation bit, based on whether or not a frequency has been calculated.
+      // state ==> state controller
+  // OUT
+      // MailboxNum ==> which of the 3 mailboxes we're at.
+      // MailboxSide ==> which of the 2 sides we're on. 0-1 == L-R
+
+// Delivers Mail
+MailCannon LaunchCodes(.clk(clk), .MailboxNum(MailboxNum), .MailboxSide(MailboxSide), .state(state), .MailDelivered(MailDelivered), .Mail_Counter(Mail_Counter), .motor(motors));
+    // IN
+        // clk = clock
+        // MailboxNum = which mailbox [L/R]
+        // state = state controller
+    // OUT
+        // MailCounter = how many delivered
+        // motors = motors activation
+
+// Counts down 1 second. Not modular.
+SecondCountdown FinalCountdown(.clk(clk), .MailDelivered(MailDelivered), .SecondsDone(SecondsDone));
+    // IN
+        // clk = clock
+        // MailDelivered = Activates 2 one sec cycles
+    // OUT
+        // SecondsDone = Marks completion of 1 sec cycles
+
+// Allows rover to move
+IPS_Movement MoveIt(.clk(clk),.prox_sensor(prox_sensor),.state(state),.Mail_Counter(Mail_Counter),.in(in),.EnableA(EnableA),.EnableB(EnableB));
+    // IN
+        // clk = clock
+        // prox_sensor = IPS sensors to follow track
+        // state = state controller
+        // Mail_Counter = how many delivered
+    // OUT
+        // in = H=bridge input pins
+        // EnableA = right motor
+        // EnableB = left motor
+
+endmodule
