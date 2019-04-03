@@ -1,24 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company:
-// Engineer:
-//
-// Create Date: 03/25/2019 10:58:34 AM
-// Design Name:
-// Module Name: Motors
-// Project Name:
-// Target Devices:
-// Tool Versions:
-// Description:
-//
-// Dependencies:
-//
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-//
-//////////////////////////////////////////////////////////////////////////////////
-
 
 module MailCannon(  input clk, // Clock
                     input MailboxSide, // 0-1 == L-R
@@ -31,7 +11,7 @@ module MailCannon(  input clk, // Clock
 
     );
     initial begin
-        Mail_Counter = 0;
+        Mail_Counter = 3;
         MailDelivered = 0;
         motor = 0;
     end
@@ -48,17 +28,17 @@ module MailCannon(  input clk, // Clock
                 MailDelivered = 0;
            end
           else if (MailboxSide) begin // Right
-               if (MailboxNum[1]) begin // 10
+               if (MailboxNum == 1) begin // 10
                   motor = 6'b000001;
                   MailDelivered = 1;
                   Mail_Counter = Mail_Counter + 1;
                end
-               else if(MailboxNum[2]) begin // 100
+               else if(MailboxNum == 2) begin // 100
                   motor = 6'b000100;
                   MailDelivered = 1;
                   Mail_Counter = Mail_Counter + 1;
                end
-               else if(MailboxNum[3]) begin // 1k
+               else if(MailboxNum == 3) begin // 1k
                   motor = 6'b010000;
                   MailDelivered = 1;
                   Mail_Counter = Mail_Counter + 1;
@@ -67,17 +47,17 @@ module MailCannon(  input clk, // Clock
                   MailDelivered = 1;
           end
           else begin // Left
-             if (MailboxNum[1]) begin // 10
+             if (MailboxNum == 1) begin // 10
                 motor = 6'b000010;
                 MailDelivered = 1;
                 Mail_Counter = Mail_Counter + 1;
              end
-             else if(MailboxNum[2]) begin // 100
+             else if(MailboxNum == 2) begin // 100
                 motor = 6'b001000;
                 MailDelivered = 1;
                 Mail_Counter = Mail_Counter + 1;
              end
-             else if(MailboxNum[3]) begin // 1k
+             else if(MailboxNum == 3) begin // 1k
                motor = 6'b100000;
                MailDelivered = 1;
                Mail_Counter = Mail_Counter + 1;
