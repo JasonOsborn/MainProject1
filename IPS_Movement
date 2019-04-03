@@ -1,52 +1,38 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 03/26/2019 07:08:19 PM
-// Design Name: 
-// Module Name: IPS_Movement
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
 
 module IPS_Movement(
     input clk,                  // Clock
-    input [2:0]prox_sensor,     // IPS sensor // Movement
+    input [3:0]prox_sensor,     // IPS sensor // Movement
     input [1:0]state,           // State controller
     input [1:0]Mail_Counter,    // Mail Counter
 
     output reg [3:0]in,         // H-bridge input pins
-    output reg EnableA,         // Right motor
-    output reg EnableB          // Left motor
+    output [1:0]Enable         // motors
 
     );
     
 
+
     // Rover movement control
       reg delay = 0;            // Delays clock
+      reg delay2 = 0;
       reg div_clk = 0;          // 1/2 clock
       reg Moving = 0;           // Activation bit
+      reg stopped = 0;
+      reg turning = 0;
+      
+      reg [5:0]buffer1;
+      reg [5:0]buffer2;
 
+
+PWM Modulator(.clk(clk), .turning(turning), .stopped(stopped), .Enable(Enable));
 
 // IPS-based movement.
       initial begin
-           in = 0;
-           EnableA = 0;
-           EnableB = 0;
-           div_clk = 0;
-           delay = 0;
-           Moving = 0;
+           in <= 0;
+           Moving <= 0;
+           stopped <= 0;
+           turning <= 0;
       end
       
       always @ (posedge clk) // Movement based on IPS sensor
@@ -63,66 +49,66 @@ module IPS_Movement(
                 Moving = 1;
         endcase
 
-    always @(posedge div_clk) begin
+    always @(posedge clk) begin
         if(Moving) begin
             casex(prox_sensor) // Proximity Sensor state machine
-                3'b1x0:
+                4'b1xx0: // Turn right
                     begin
-                        in = 4'b0101;  //turns right
-                        EnableA = 1;
-                        EnableB = 1;
+                        in = 4'b0101;
+                        turning = 1;
+                        stopped = 0;
                     end
-                3'b0x1:
+                4'b1101: // Micro-adjustments Right
+                    begin
+                        in = 4'b0101;
+                        turning = 1;
+                        stopped = 0;
+                    end
+                4'b1011: // Micro-adjustments Left
                     begin
                         in = 4'b1010;
-                        EnableA = 1;
-                        EnableB = 1;  //turns left
+                        turning = 1;
+                        stopped = 0;
                     end
-                3'b101:
+                4'b0xx1: // Turns left
                     begin
-                        in = 4'b0110;  //goes forward
-                        EnableA = 1;
-                        EnableB = 1;
+                        in = 4'b1010;
+                        turning = 1;
+                        stopped = 0;
                     end
-                3'b000: // Detects all three
+                4'b1001: // Move forward
+                    begin
+                        in = 4'b0110;
+                        turning = 0;
+                        stopped = 0;
+                    end
+                3'b0000: // Detects all four
                     begin
                         if (Mail_Counter >= 3) begin
-                            in = 4'b0;
-                            EnableA = 0;
-                            EnableB = 0;
+                            in = 4'd0;
+                            turning = 0;
+                            stopped = 1;
                         end
                         else begin
                             in = 4'b0110;  //goes forward
-                            EnableA = 1;
-                            EnableB = 1;
+                            turning = 0;
+                            stopped = 0;
                         end
                     end
                 default:
                     begin
-                        in = 4'b0;
-                        EnableA = 0;    //stops rover if there is no metal tape
-                        EnableB = 0;
+                        in = 4'b1001;
+                        turning = 0;
+                        stopped = 0;
                     end
                 endcase
             end
         else begin
             begin // Stop until further notice.
-                in = 4'b0;
-                EnableA = 0;
-                EnableB = 0;
+                in <= 4'b0;
+                turning = 0;
+                stopped = 1;
             end
         end
     end
-            
-
-// Clock divider (1:2)
-    always @(posedge clk) begin
-        if (!delay) begin   //slows down the rover by 1/2
-            div_clk <= ~div_clk;
-            delay <= 1;
-        end
-        else
-            delay <= 0;
-    end
-    
 endmodule
