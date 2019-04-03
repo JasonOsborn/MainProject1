@@ -3,14 +3,13 @@
 module MainProjectv0_6(
     // Hardware Inputs
     input clk,                  // Clock
-    input [2:0]prox_sensor,     // IPS sensor // Movement
+    input [3:0]prox_sensor,     // IPS sensor // Movement
     input [1:0]signal,          // IR signal // Delivery
     
     // Hardware Outputs
         // Movement
-    output reg [3:0]in,         // H-bridge input pins
-    output reg EnableA,         // Right motor
-    output reg EnableB,         // Left motor
+    output [3:0]in,         // H-bridge input pins
+    output [1:0]Enable,         // Motor enable bits
     
         // Delivery
     output [5:0] motors         // Mail launch motors
@@ -25,16 +24,18 @@ module MainProjectv0_6(
     // State Machine/Control wires
       wire [1:0]state;          // Controls behavior of rover       // initial = 0/default [nextState]
       
-      wire [2:0]FreqDecided;         // Frequency calculation done bit.  // Resets on MailboxNum calculation [WhatBox -> FreqDecided]
+      wire [2:0]FreqDecided;    // Frequency calculation done bit.  // Resets on MailboxNum calculation [WhatBox -> FreqDecided]
       wire SecondsDone;         // Software delay done bit.         // Resets after 1 second. [SecondCountdown]
-      wire [2:0]SignalDetected;      // IR sensor initial pulse bit.     // Resets on MailboxNum calculation [WhatBox -> FreqDecided]
+      wire [2:0]SignalDetected; // IR sensor initial pulse bit.     // Resets on MailboxNum calculation [WhatBox -> FreqDecided]
       wire MailDelivered;       // Motor activation bit.            // Resets on state 0. [nextState -> MailCannon]
       
       wire [1:0]MailboxNum;     // Which mailbox is it at?          // Resets on state 0. [nextState -> WhatBox]
       wire MailboxSide;         // Which side is mailbox on?        // Resets on state 0. [nextState -> WhatBox]
       wire [1:0]Mail_Counter;   // Counts mail deliveries.          // Does Not Reset.
 
+      wire [3:0]inWire;
       
+      assign inWire = in;
 
 // Sub-module calls
 
@@ -94,7 +95,7 @@ SecondCountdown FinalCountdown(.clk(clk), .MailDelivered(MailDelivered), .Second
         // SecondsDone = Marks completion of 1 sec cycles
 
 // Allows rover to move
-IPS_Movement MoveIt(.clk(clk),.prox_sensor(prox_sensor),.state(state),.Mail_Counter(Mail_Counter),.in(in),.EnableA(EnableA),.EnableB(EnableB));
+IPS_Movement MoveIt(.clk(clk),.prox_sensor(prox_sensor),.state(0),.Mail_Counter(Mail_Counter),.in(inWire),.Enable(Enable));
     // IN
         // clk = clock
         // prox_sensor = IPS sensors to follow track
