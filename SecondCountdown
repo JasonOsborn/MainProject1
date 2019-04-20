@@ -1,38 +1,13 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 03/25/2019 12:13:14 PM
-// Design Name: 
-// Module Name: SecondCountdown
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
-
 module SecondCountdown( input clk,
                         input MailDelivered,
                         output reg SecondsDone
     );
-    
     reg [31:0]counter;
-    
     initial begin
         SecondsDone = 0;
         counter = 32'd0;
     end
-        
-    
     always @(posedge clk) begin
     if (MailDelivered)
         if (counter < 100_000_000)
@@ -44,7 +19,5 @@ module SecondCountdown( input clk,
             else
                 SecondsDone = 1;
         end
-            
     end
-        
 endmodule
