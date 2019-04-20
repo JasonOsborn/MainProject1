@@ -7,15 +7,17 @@ module MailCannon(  input clk, // Clock
                     
                     output reg MailDelivered, // Activate countdown
                     output reg [1:0]Mail_Counter, // How many delviered?
-                    output reg [5:0] motor // Launch motors
-
+                    output reg [2:0] motor, // Launch motors
+                    output reg err
     );
+    
     initial begin
-        Mail_Counter = 3;
+        Mail_Counter = 0;
         MailDelivered = 0;
         motor = 0;
+        err = 0;
     end
-
+    
 
       always@(posedge clk) begin
 
@@ -23,47 +25,47 @@ module MailCannon(  input clk, // Clock
 // Determine which box (1 2 3)
 // Activate MailDelivered - State changing bit.
 
-           if ( state == 0 ) begin // State (reset signal) overrides activation
+           if ( state == 0 || state == 3) begin // State (reset signal) overrides activation
                 motor = 0;
                 MailDelivered = 0;
            end
-          else if (MailboxSide) begin // Right
+           else if (MailboxSide) begin // Right
                if (MailboxNum == 1) begin // 10
-                  motor = 6'b000001;
+                  motor = 3'b100;
                   MailDelivered = 1;
                   Mail_Counter = Mail_Counter + 1;
                end
                else if(MailboxNum == 2) begin // 100
-                  motor = 6'b000100;
+                  motor = 3'b010;
                   MailDelivered = 1;
                   Mail_Counter = Mail_Counter + 1;
                end
                else if(MailboxNum == 3) begin // 1k
-                  motor = 6'b010000;
+                  motor = 3'b001;
                   MailDelivered = 1;
                   Mail_Counter = Mail_Counter + 1;
                end
                else
-                  MailDelivered = 1;
-          end
-          else begin // Left
+                  err = 1;
+           end
+           else begin // Left
              if (MailboxNum == 1) begin // 10
-                motor = 6'b000010;
+                motor = 3'b100;
                 MailDelivered = 1;
                 Mail_Counter = Mail_Counter + 1;
              end
              else if(MailboxNum == 2) begin // 100
-                motor = 6'b001000;
+                motor = 3'b010;
                 MailDelivered = 1;
                 Mail_Counter = Mail_Counter + 1;
              end
              else if(MailboxNum == 3) begin // 1k
-               motor = 6'b100000;
+                motor = 3'b001;
                MailDelivered = 1;
                Mail_Counter = Mail_Counter + 1;
              end
              else
-               MailDelivered = 1;
+               err = 1;
         end
       end
 endmodule
