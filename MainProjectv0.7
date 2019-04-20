@@ -1,10 +1,11 @@
 `timescale 1ns / 1ps
 
-module MainProjectv0_6(
+module MainProjectv0_7(
     // Hardware Inputs
     input clk,                  // Clock
     input [3:0]prox_sensor,     // IPS sensor // Movement
-    input [1:0]signal,          // IR signal // Delivery
+    input signal,          // IR signal // Delivery
+    input [1:0]current,
     
     // Hardware Outputs
         // Movement
@@ -12,7 +13,9 @@ module MainProjectv0_6(
     output [1:0]Enable,         // Motor enable bits
     
         // Delivery
-    output [5:0] motors         // Mail launch motors
+    output [2:0] motors,         // Mail launch motors
+    
+    output [11:0] LED
     );
     
 // Variable Declerations
@@ -32,16 +35,16 @@ module MainProjectv0_6(
       wire [1:0]MailboxNum;     // Which mailbox is it at?          // Resets on state 0. [nextState -> WhatBox]
       wire MailboxSide;         // Which side is mailbox on?        // Resets on state 0. [nextState -> WhatBox]
       wire [1:0]Mail_Counter;   // Counts mail deliveries.          // Does Not Reset.
-
-      wire [3:0]inWire;
+      wire [1:0]TestLED;
+      wire [5:0]FlipLED;
       
-      assign inWire = in;
+      wire err;
 
 // Sub-module calls
 
 // Frequency Counter
-FreqCounter MeasureFrequencyL(.clk(clk), .signal(signal[0]), .state(state), .freq(frequencyL), .FreqDecided(FreqDecided[0]), .SignalDetected(SignalDetected[0]));
-FreqCounter MeasureFrequencyR(.clk(clk), .signal(signal[1]), .state(state), .freq(frequencyR), .FreqDecided(FreqDecided[1]), .SignalDetected(SignalDetected[1]));
+FreqCounter MeasureFrequencyL(.clk(clk), .signal(0), .state(state), .freq(frequencyL), .FreqDecided(FreqDecided[0]), .SignalDetected(SignalDetected[0]), .LED(TestLED[0]), .FlipLED(FlipLED[2:0]));
+FreqCounter MeasureFrequencyR(.clk(clk), .signal(signal), .state(state), .freq(frequencyR), .FreqDecided(FreqDecided[1]), .SignalDetected(SignalDetected[1]), .LED(TestLED[1]), .FlipLED(FlipLED[5:3]));
     // IN
         // clk = clock
         // signal[n] = signal ==> IR signal input of each side
@@ -53,9 +56,14 @@ FreqCounter MeasureFrequencyR(.clk(clk), .signal(signal[1]), .state(state), .fre
         // SignalDetected[L/R] = state control variable noting signal detection ( state 0->1)
     assign FreqDecided[2] = (FreqDecided[0] || FreqDecided[1]); // If either has calculated a frequency, move on (frequency calc).
     assign SignalDetected[2] = (SignalDetected[0] || SignalDetected[1]); // If either has noticed a signal, move on (state machine).
+    assign LED[4] = (TestLED[0] || TestLED[1]);
+    assign LED[6] = (FlipLED[3] || FlipLED[0]);
+    assign LED[7] = (FlipLED[4] || FlipLED[1]);
+    assign LED[8] = (FlipLED[5] || FlipLED[2]);
+    
     
 // State Machine
-nextState DetermineState(.clk(clk), .CurrentState(state), .StateVars({SecondsDone,MailDelivered,SignalDetected[2]}));
+nextState DetermineState(.clk(clk), .CurrentState(state), .StateVars({SecondsDone,MailDelivered,SignalDetected[2]}), .LED(LED[3:0]));
     // IN
         // clk = clock
         // StateVars =>
@@ -66,7 +74,7 @@ nextState DetermineState(.clk(clk), .CurrentState(state), .StateVars({SecondsDon
         // CurrentState = state
 
 // Determine Mailbox
-WhatBox WhichBox(.clk(clk),.freqL(frequencyL), .freqR(frequencyR), .Decided(FreqDecided[2]), .state(state), .MailboxNum (MailboxNum[1:0]), .Side(MailboxSide));
+WhatBox WhichBox(.clk(clk),.freqL(frequencyL), .freqR(frequencyR), .Decided(FreqDecided[2]), .state(state), .MailboxNum (MailboxNum[1:0]), .MailboxSide(MailboxSide), .LED(LED[5]), .freqLED(LED[11:9]));
   // IN
       // clk = clk ==> clock
       // frequency[L/R] ==> frequency of the input signal on either side.
@@ -77,7 +85,7 @@ WhatBox WhichBox(.clk(clk),.freqL(frequencyL), .freqR(frequencyR), .Decided(Freq
       // MailboxSide ==> which of the 2 sides we're on. 0-1 == L-R
 
 // Delivers Mail
-MailCannon LaunchCodes(.clk(clk), .MailboxNum(MailboxNum), .MailboxSide(MailboxSide), .state(state), .MailDelivered(MailDelivered), .Mail_Counter(Mail_Counter), .motor(motors));
+MailCannon LaunchCodes(.clk(clk), .MailboxNum(MailboxNum), .MailboxSide(MailboxSide), .state(state), .MailDelivered(MailDelivered), .Mail_Counter(Mail_Counter), .motor(motors), .err(err));
     // IN
         // clk = clock
         // MailboxNum = which mailbox [L/R]
@@ -95,7 +103,7 @@ SecondCountdown FinalCountdown(.clk(clk), .MailDelivered(MailDelivered), .Second
         // SecondsDone = Marks completion of 1 sec cycles
 
 // Allows rover to move
-IPS_Movement MoveIt(.clk(clk),.prox_sensor(prox_sensor),.state(0),.Mail_Counter(Mail_Counter),.in(inWire),.Enable(Enable));
+IPS_Movement MoveIt(.clk(clk),.prox_sensor(prox_sensor),.state(state),.Mail_Counter(Mail_Counter), .current(current), .in(in),.Enable(Enable));
     // IN
         // clk = clock
         // prox_sensor = IPS sensors to follow track
