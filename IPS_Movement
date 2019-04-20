@@ -5,72 +5,88 @@ module IPS_Movement(
     input [3:0]prox_sensor,     // IPS sensor // Movement
     input [1:0]state,           // State controller
     input [1:0]Mail_Counter,    // Mail Counter
+    input [1:0]current,
 
     output reg [3:0]in,         // H-bridge input pins
     output [1:0]Enable         // motors
 
     );
     
-
-
     // Rover movement control
-      reg delay = 0;            // Delays clock
-      reg delay2 = 0;
       reg div_clk = 0;          // 1/2 clock
       reg Moving = 0;           // Activation bit
       reg stopped = 0;
       reg turning = 0;
+      reg TurnAround = 0;
+      reg TurnFlag1 = 0;
+      reg StartFlag = 1;
       
-      reg [5:0]buffer1;
-      reg [5:0]buffer2;
-
-
-PWM Modulator(.clk(clk), .turning(turning), .stopped(stopped), .Enable(Enable));
+PWM Modulator(.clk(clk), .turning(turning), .stopped(stopped), .current(current), .Enable(Enable));
 
 // IPS-based movement.
       initial begin
-           in <= 0;
+           in <= 4'b0110;
            Moving <= 0;
            stopped <= 0;
            turning <= 0;
+           TurnAround <= 0;
+           TurnFlag1 <= 0;
+           StartFlag <= 1;
       end
       
       always @ (posedge clk) // Movement based on IPS sensor
           casex(state) // Primary state machine
-            3'b000: // case 0
+            2'b00: // case 0
                 Moving = 1;
-            3'b001: // case 1
+            2'b01: // case 1
                 Moving = 0;
-            3'b010: // case 2
+            2'b10: // case 2
                 Moving = 0;
-            3'b011: // case 3
+            2'b11: // case 3
                 Moving = 1;
             default: //fallthrough: move forward on track.
                 Moving = 1;
         endcase
 
     always @(posedge clk) begin
-        if(Moving) begin
+        if(StartFlag) begin
+            in = 4'b0110;
+            turning = 0;
+            stopped = 0;
+            if (prox_sensor == 4'b1001) begin
+                StartFlag = 0;
+            end
+        end
+        else if(TurnAround) begin
+            in = 4'b1010;
+            turning = 1;
+            stopped = 0;
+            if (prox_sensor == 4'b1111)
+                TurnFlag1 = 1;
+            if (prox_sensor == 4'b1001 && TurnFlag1 == 1)
+                TurnAround = 0;
+        end
+        else if(Moving) begin
             casex(prox_sensor) // Proximity Sensor state machine
-                4'b1xx0: // Turn right
+                4'b1xx0: // Turn Left
                     begin
                         in = 4'b0101;
                         turning = 1;
                         stopped = 0;
                     end
-                4'b1101: // Micro-adjustments Right
+                4'b1101: // Micro-adjustments Left
                     begin
                         in = 4'b0101;
                         turning = 1;
                         stopped = 0;
                     end
-                4'b1011: // Micro-adjustments Left
+                4'b1011: // Micro-adjustments Right
                     begin
                         in = 4'b1010;
                         turning = 1;
                         stopped = 0;
                     end
-                4'b0xx1: // Turns left
+                4'b0xx1: // Turns Right
                     begin
                         in = 4'b1010;
                         turning = 1;
@@ -82,17 +98,15 @@ PWM Modulator(.clk(clk), .turning(turning), .stopped(stopped), .Enable(Enable));
                         turning = 0;
                         stopped = 0;
                     end
-                3'b0000: // Detects all four
+                4'b0xx0: // Detects all four
                     begin
-                        if (Mail_Counter >= 3) begin
+                        if (Mail_Counter < 3) begin
+                            TurnAround = 1;
+                        end
+                        else begin
                             in = 4'd0;
                             turning = 0;
                             stopped = 1;
-                        end
-                        else begin
-                            in = 4'b0110;  //goes forward
-                            turning = 0;
-                            stopped = 0;
                         end
                     end
                 default:
@@ -105,7 +119,7 @@ PWM Modulator(.clk(clk), .turning(turning), .stopped(stopped), .Enable(Enable));
             end
         else begin
             begin // Stop until further notice.
-                in <= 4'b0;
+                in = 4'd0;
                 turning = 0;
                 stopped = 1;
             end
