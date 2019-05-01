@@ -3,21 +3,34 @@ module SecondCountdown( input clk,
                         input MailDelivered,
                         output reg SecondsDone
     );
+    localparam counterMax1 = 250_000_000;
+    localparam counterMax2 = 100_000_000;
+    //localparam counterMax1 = 20; // Simulation
+    //localparam counterMax2 = 20; // Simulation
+    
     reg [31:0]counter;
     initial begin
         SecondsDone = 0;
         counter = 32'd0;
     end
     always @(posedge clk) begin
-    if (MailDelivered)
-        if (counter < 100_000_000)
-            counter = counter + 1;
-        else begin
-            counter = 0;
-            if (SecondsDone)
-                SecondsDone = 0;
-            else
+        if (MailDelivered & !SecondsDone)
+            if (counter < counterMax1)
+                counter = counter + 1;
+            else begin
+                counter = 0;
                 SecondsDone = 1;
+            end
+        else if (MailDelivered & SecondsDone)
+            if (counter < counterMax2)
+                counter = counter + 1;
+            else begin
+                counter = 0;
+                SecondsDone = 0;
+            end
+        else begin
+            SecondsDone = 0;
+            counter = 0;
         end
     end
 endmodule
