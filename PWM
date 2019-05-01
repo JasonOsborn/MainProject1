@@ -4,33 +4,53 @@ module PWM(
         input clk,
         input turning,
         input stopped,
+        input reversal,
         input [1:0]current,
-        output reg [1:0]Enable
+        output reg [1:0]Enable,
+        output reg LED
     );
     reg [31:0] counter;
-    localparam counter_max = 100_000;
+    
+    // Any reason for us to stop?
+    wire stopper;
+    assign stopper = (current[0] || current[1] || stopped);
+    
+//    localparam counter_max = 20; // simulation
+    localparam counter_max = 255;
     
     initial begin
         counter = 0;
+        LED = 0;
         Enable = 2'b11;
     end
     
     always @(posedge clk) begin
-        if (current != 2'b00) begin
+        if (stopper) begin
             Enable = 2'b00;
+            if ( current[1] || current[0] )
+                LED = 1;
+            else
+                LED = 0;
         end
         else if (counter >= counter_max) begin
             counter = 0;
+            LED = 0;
         end
         else begin
             counter = counter + 1;
-            if (turning) // Turning? 25%
-                if (counter > 90_000)
+            LED = 0;
+            if (reversal) // Reversing? Slow as hell.
+                if (counter > counter_max - ((counter_max)/100)*5)
                     Enable = 2'b11;
-            else if (stopped) // Stopped? 0%
-                Enable = 2'd0;
+                else
+                    Enable = 2'b00;
+            else if (turning) // Turning? 10%
+                if (counter > counter_max - (counter_max/10))
+                    Enable = 2'b11;
+                else
+                    Enable = 2'b00;
             else // None of the above?
-                if (counter > 90_000)
+                if (counter > counter_max - (counter_max/10))
                     Enable = 2'b11;
         end
     end
