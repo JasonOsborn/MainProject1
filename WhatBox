@@ -2,21 +2,14 @@
 
 module WhatBox(
     input clk,
-    input [10:0]freqL, // Frequency
-    input [10:0]freqR, // Frequency
+    input [10:0]freqFinal, // Frequency
     input Decided,
-    input [1:0]state,
+    input [2:0]state,
     
-    output reg [1:0]MailboxNum, // 0,1,2- 3 different 
-    output MailboxSide, // 0-1 == L-R
+    output reg [1:0]MailboxNum, // 0,1,2- 3 different
     output reg LED,
     output reg [2:0]freqLED
     );
-    
-    wire [10:0]freqFinal;
-    
-    assign freqFinal = (freqL > freqR)? freqL : freqR;
-    assign MailboxSide = ((freqL > freqR) && (state != 0))? 1 : 0;
     
     initial begin
         MailboxNum = 2'b00;
@@ -36,7 +29,7 @@ module WhatBox(
                 MailboxNum = 2'b10;
                 freqLED = 3'b010;
             end
-            else if ((freqFinal <= 1016) && (freqFinal >= 984)) begin // 1k Hz
+            else if (freqFinal >= 940) begin // 1k Hz
                 MailboxNum = 2'b11;
                 freqLED = 3'b100;
             end
