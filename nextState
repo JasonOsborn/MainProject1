@@ -11,31 +11,35 @@
             // 
 module nextState(
     input clk,
+    input err,
     input [2:0]StateVars,
     output reg [3:0]LED,
         // b0: SignalDetected(L + R)
         // b1: MailDelviered
         // b2: CountdownFinished
         // b3: error in WhatBox/FreqCounter calculation
-    output reg [1:0] CurrentState
+    output reg [2:0] CurrentState
         // State Summaries:
-            // 0: 00- Move forward on track, search for IR
-            // 1: 01- Stop and deliver mail
-            // 2: 10- Wait for 1 second (Mail launch)
-            // 3: 11- Move forward for 1 second, NOT searching for IR
+            // 0: 000- Move forward on track, search for IR
+            // 1: 001- Stop and deliver mail
+            // 2: 010- Wait for 1 second (Mail launch)
+            // 3: 011- Move forward for 1 second, NOT searching for IR
+            // 4: 100- Passed mailbox, reverse.
         
     );
     
-    reg [1:0] nextState;
+    reg [2:0] nextState;
+    //reg [2:0] prevState; // Previous state register. Currently unused.
     initial begin
-        CurrentState <= 2'b00;
-        nextState <= 2'b00;
+        CurrentState <= 3'b000;
+        nextState <= 3'b000;
+        LED = 4'b0000;
     end
     
 always @(posedge clk)
     begin
         case(CurrentState)
-            2'b00: begin
+            3'b000: begin // 0
                 LED = 4'b0001;
             // Move forward, look for IR
                 if(StateVars[0])
@@ -43,7 +47,7 @@ always @(posedge clk)
                 else
                     nextState = 0;
             end
-            2'b01: begin
+            3'b001: begin // 1
                 LED = 4'b0010;
             // Stop
                 if(StateVars[1])
@@ -51,21 +55,31 @@ always @(posedge clk)
                 else
                     nextState = 1;
             end
-            2'b10: begin
+            3'b010: begin // 2
                 LED = 4'b0100;
             // Wait
-                if(StateVars[2])
+                if (err)
+                    nextState = 4;
+                else if(StateVars[2])
                     nextState = 3;
                 else
                     nextState = 2;
             end
-            2'b11: begin
+            3'b011: begin // 3
                 LED = 4'b1000;
             // Move forward, NOT look for IR
-                if(!StateVars[2])
+                if (err)
+                    nextState = 4;
+                else if(!StateVars[2])
                     nextState = 0;
                 else
                     nextState = 3;
+            end
+            3'b100: begin // 4
+                if(StateVars[0])
+                    nextState = 1;
+                else
+                    nextState = 4;
             end
             default: begin
                 nextState = 0;
@@ -73,7 +87,9 @@ always @(posedge clk)
         endcase
     end
 
-always@(posedge clk)
+always@(posedge clk) begin
     CurrentState <= nextState;
+    //prevState <= CurrentState;
+    end
     
 endmodule
