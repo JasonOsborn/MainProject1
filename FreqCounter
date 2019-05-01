@@ -4,7 +4,7 @@
 module FreqCounter(
                     input clk,
                     input signal,
-                    input [1:0]state,
+                    input [2:0]state,
                     output reg [10:0]freq, // Calculated Frequency // IR signal
                     output reg FreqDecided, // Do we have a frequency yet? // IR signal
                     output reg SignalDetected,
@@ -12,26 +12,29 @@ module FreqCounter(
                     output reg [2:0]FlipLED
                         );
     
-      reg last_sig;
-      reg middle_sig;
-      reg final_sig; // Last/middle/final_sig = d flip flop to ensure that signal is changing
+      reg last_sig = 0;
+      reg middle_sig = 0;
+      reg final_sig = 0; // Last/middle/final_sig = d flip flop to ensure that signal is changing
       
-      //localparam max = 'd25_000_000; // 1/4th second
-      localparam max = 'd50;
+      localparam max = 'd25_000_000; // 1/4th second
+      //localparam max = 'd50; // Simulation
       
       reg [31:0] ClockCount = 32'd0; // How many pulses have passed? Have they exceeded localparam max?
       reg [31:0] signal_count = 32'd0; // How many signal pulses did we see in 1/8th of a second? (incremented on posedge of signal)
       
       initial begin
-        last_sig <= 0;
         middle_sig <= 0;
         final_sig <= 0;
+        last_sig <= 0;
         
         ClockCount <= 0;
         signal_count <= 0;
         freq <= 0;
         FreqDecided <= 0;
         SignalDetected <= 0;
+        
+        LED <= 0;
+        FlipLED <= 0;
       end
         
         always @(posedge clk) // D-flip flop 
@@ -57,28 +60,26 @@ module FreqCounter(
                 FlipLED[0] = 0;
             if (state != 0 && state != 1) // general reset
                 begin
+                    if (state == 2) begin // freq reset
+                        freq = 0;
+                    end
                     signal_count = 0;
                     ClockCount = 0;
                     FreqDecided = 0;
                     SignalDetected = 0;
-                    if (state == 2) // freq reset
-                        freq = 0;
                 end
             else
                 begin
-                    if (ClockCount < max)
-                        begin
-                            ClockCount = ClockCount + 1;
+                    if (ClockCount < max) begin
                             if (middle_sig & ~final_sig) begin // posedge of signal
-                                LED = 1;
-                                signal_count = signal_count + 1; // inc. signal counter
                                 if(!SignalDetected) begin
                                     SignalDetected = 1; // note signal exists
                                     ClockCount = 0;
                                 end
-                             else
-                                LED = 0;
+                                LED = 1;
+                                signal_count = signal_count + 1; // inc. signal counter
                             end
+                            ClockCount = ClockCount + 1;
                         end
                     else // 1/4th second passed
                         begin
