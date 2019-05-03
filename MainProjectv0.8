@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module MainProjectv0_7(
+module MainProjectv0_8(
     // Hardware Inputs
     input clk,                  // Clock
     input [3:0]prox_sensor,     // IPS sensor // Movement
@@ -15,7 +15,7 @@ module MainProjectv0_7(
         // Delivery
     output [2:0] motors,         // Mail launch motors
     
-    output [13:0] LED
+    output [15:0] LED
     );
     
 // Variable Declerations
@@ -35,6 +35,7 @@ module MainProjectv0_7(
       wire [1:0]Mail_Counter;   // Counts mail deliveries.          // Does Not Reset.
       
       wire err;
+
 
 // Sub-module calls
 
@@ -72,7 +73,7 @@ WhatBox WhichBox(.clk(clk), .freqFinal(freqFinal), .Decided(FreqDecided), .state
       // MailboxNum ==> which of the 3 mailboxes we're at.
 
 // Delivers Mail
-MailCannon LaunchCodes(.clk(clk), .MailboxNum(MailboxNum), .state(state), .MailDelivered(MailDelivered), .Mail_Counter(Mail_Counter), .motor(motors), .err(err), .LED(LED[12]));
+MailCannon LaunchCodes(.clk(clk), .MailboxNum(MailboxNum), .state(state), .MailDelivered(MailDelivered), .motor(motors), .err(err), .LED(LED[12]));
     // IN
         // clk = clock
         // MailboxNum = which mailbox [L/R]
@@ -82,7 +83,7 @@ MailCannon LaunchCodes(.clk(clk), .MailboxNum(MailboxNum), .state(state), .MailD
         // motors = motors activation
 
 // Counts down 1 second. Not modular.
-SecondCountdown FinalCountdown(.clk(clk), .MailDelivered(MailDelivered), .SecondsDone(SecondsDone));
+SecondCountdown FinalCountdown(.clk(clk), .Mail_Counter(Mail_Counter), .MailDelivered(MailDelivered), .SecondsDone(SecondsDone));
     // IN
         // clk = clock
         // MailDelivered = Activates 2 one sec cycles
@@ -90,7 +91,7 @@ SecondCountdown FinalCountdown(.clk(clk), .MailDelivered(MailDelivered), .Second
         // SecondsDone = Marks completion of 1 sec cycles
 
 // Allows rover to move
-IPS_Movement MoveIt(.clk(clk),.SignalDetected(SignalDetected), .prox_sensor(prox_sensor),.state(state),.Mail_Counter(Mail_Counter), .current(current), .in(in),.Enable(Enable), .LED(LED[13]));
+IPS_Movement MoveIt(.clk(clk), .prox_sensor(prox_sensor),.state(state),.Mail_Counter(Mail_Counter), .current(current), .in(in),.Enable(Enable), .LED(LED[14:13]), .LED2(LED[15]));
     // IN
         // clk = clock
         // prox_sensor = IPS sensors to follow track
