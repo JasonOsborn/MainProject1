@@ -2,7 +2,6 @@
 
 module IPS_Movement(
     input clk,                  // Clock
-    input SignalDetected,
     input [3:0]prox_sensor,     // IPS sensor // Movement
     input [2:0]state,           // State controller
     input [1:0]Mail_Counter,    // Mail Counter
@@ -10,155 +9,162 @@ module IPS_Movement(
 
     output reg [3:0]in,         // H-bridge input pins
     output [1:0]Enable,         // motors
-    output LED
+    output [1:0]LED,
+    output LED2
 
     );
     
+
+    
     // in-pin controllers
-    localparam Left = 4'b0101;
-    localparam Right = 4'b1010;
+    localparam Right = 4'b0101;
+    localparam Left = 4'b1010;
     localparam Down = 4'b1001;
     localparam Up = 4'b0110;
     
-    // Rover movement control
-      reg Moving;           // Activation bit
-      reg Reverse;
-      
-      reg stopped;
-      reg turning;
-      reg reversal;
-      
-      reg TurnAround;
-      reg TurnFlag1;
-      reg StartFlag;
-      
-      reg [3:0]prevProx;
-      
-PWM Modulator(.clk(clk), .turning(turning), .stopped(stopped), .reversal(reversal), .LED(LED), .current(current), .Enable(Enable));
+    reg Moving;
+    reg ReverseFlag;
+    reg turning;
+    reg stopped;
+    reg reversal;
+    reg StartFlag;
+    reg TurnAround;
+    
+    PWM Modulator(.clk(clk), .turning(turning), .stopped(stopped), .reversal(reversal), .LED(LED), .current(current), .Enable(Enable));
 
-// IPS-based movement.
-      initial begin
-           // Output
-           in <= Up;
-           
-           // State
-           Moving <= 0;
-           Reverse <= 0;
-           
-           // Track
-           stopped <= 0;
-           turning <= 0;
-           reversal <= 0;
-           
-           // Turning Around
-           TurnAround <= 0;
-           TurnFlag1 <= 0;
-           prevProx <= 4'b0000;
-           
-           // Initial
-           StartFlag <= 1;
-           
-      end
-      always @ (posedge clk) // Movement based on IPS sensor
-          casex(state) // Primary state machine
-            3'b000: begin // case 0
-                    Reverse = 0;
-                    if( !SignalDetected) begin
-                        Moving = 1;
-                        end
-                    else begin
-                        Moving = 0;
-                    end
-                end
-            3'b001: // case 1
-                {Reverse,Moving} = 2'b00;
-            3'b010: // case 2
-                {Reverse,Moving} = 2'b00;
-            3'b011:  // case 3
-                {Reverse,Moving} = 2'b01;
-            3'b100: // case 4 (error)
-                {Reverse,Moving} = 2'b10;
-            default: //fallthrough: move forward on track.
-                {Reverse,Moving} = 2'b01;
-        endcase
-
-    always @(posedge clk) begin
-        if(StartFlag) begin // Begin- First time on all 4 trigger.
-            in = Up;
-            {turning,stopped,reversal} = 3'b000;
-            if (prox_sensor == 4'b1001 || prox_sensor == 4'b1111) begin
-                StartFlag = 0;
-            end
-        end
+    
+    initial begin
+        Moving <= 0;
+        ReverseFlag <= 0;
+        in <= 4'd0;
+        turning <= 0;
+        stopped <= 0;
+        reversal <= 0;
         
-        else if(TurnAround) begin // 2nd time on all 4 trigger
-            in = Left;
-            {turning,stopped,reversal} = 3'b100;
-            if (prox_sensor == 4'b1111)
-                TurnFlag1 = 1;
-            if (prox_sensor == 4'b1001 && prevProx == 4'b1001 && TurnFlag1 == 1) // Have we, at least once, hit nothing + we've been on the track at least 2 clks?
-                TurnAround = 0;
-        end
-        
-        else if(Moving) begin
-            casex(prox_sensor) // Proximity Sensor state machine
-                4'b1xx0: // Turn Left
-                    begin
-                        in = Left;
-                        {turning,stopped,reversal} = 3'b100;
-                    end
-                4'b1101: // Micro-adjustments Left
-                    begin
-                        in = Left;
-                        {turning,stopped,reversal} = 3'b100;
-                    end
-                4'b1011: // Micro-adjustments Right
-                    begin
-                        in = Right;
-                        {turning,stopped,reversal} = 3'b100;
-                    end
-                4'b0xx1: // Turns Right
-                    begin
-                        in = Right;
-                        {turning,stopped,reversal} = 3'b100;
-                    end
-                4'b1001: // Move forward
-                    begin
-                        in = Up;
-                        {turning,stopped,reversal} = 3'b000;
-                    end
-                4'b0xx0: // Detects all four
-                    begin
-                        if (Mail_Counter < 3) begin
-                            TurnAround = 1;
-                        end
-                        else begin
-                            in = 4'd0;
-                            {turning,stopped,reversal} = 3'b010;
-                        end
-                    end
-                default:
-                    begin
-                        in = Down;
-                        {turning,stopped,reversal} = 3'b000;
-                    end
-                endcase
-            end
-        else if (Reverse) begin
-            in = Down;
-            {turning,stopped,reversal} = 3'b001;
-        end
-        else begin
-            begin // Stop until further notice.
-                in = 4'd0;
-                {turning,stopped,reversal} = 3'b010;
-            end
-        end
+        StartFlag <= 1;
+        TurnAround <= 0;
     end
     
-    always @(posedge clk)
-    begin
-        prevProx <= prox_sensor;
+    
+    assign LED2 = (in == Down || in == Up)?1:0;
+    
+    always @(posedge clk) begin
+        case(state)
+            3'b000: begin
+                Moving = 1;
+                ReverseFlag = 0;
+            end
+            3'b001: begin
+                Moving = 0;
+                ReverseFlag = 0;
+            end
+            3'b010: begin
+                Moving = 0;
+                ReverseFlag = 0;
+            end
+            3'b011: begin
+                Moving = 1;
+                ReverseFlag = 0;
+            end
+            3'b100: begin
+                Moving = 0;
+                ReverseFlag = 1;
+            end
+            default: begin
+                Moving = 1;
+                ReverseFlag = 0;
+            end
+        endcase
     end
+
+always @(posedge clk) begin
+    if(Moving && !(StartFlag || TurnAround || ReverseFlag))
+        casex(prox_sensor)
+            4'b0xx0: begin // All 4
+                if(Mail_Counter > 2) begin
+                    in = 4'd0;
+                    turning = 0;
+                    stopped = 1;
+                    reversal = 0;
+                end
+                else begin // Turn Around
+                    in = Left;
+                    turning = 1;
+                    stopped = 0;
+                    reversal = 0;
+                    TurnAround = 1;
+                end
+            end
+            4'b1001: begin // Forward
+                in = Up;
+                turning = 0;
+                stopped = 0;
+                reversal = 0;
+            end
+            4'b1xx0: begin // Turn L
+                in = Left;
+                turning = 1;
+                stopped = 0;
+                reversal = 0;
+            end
+            4'b110x: begin // Adjust L
+                in = Left;
+                turning = 1;
+                stopped = 0;
+                reversal = 0;
+            end
+            4'b0xx1: begin // Turn R
+                in = Right;
+                turning = 1;
+                stopped = 0;
+                reversal = 0;
+            end
+            4'bx011: begin // Adjust R
+                in = Right;
+                turning = 1;
+                stopped = 0;
+                reversal = 0;
+            end
+            default: begin// Forward
+                in = Up;
+                turning = 0;
+                stopped = 0;
+                reversal = 0;
+            end
+        endcase
+    else // Not in state 0 or starting?
+        if(StartFlag) begin
+            in = Up;
+            turning = 0;
+            stopped = 0;
+            reversal = 0;
+            if (prox_sensor == 4'b1001 || prox_sensor == 4'b1111 )
+                StartFlag = 0;
+            else
+                StartFlag = 1;
+        end
+        else if (TurnAround) begin
+            in = Left;
+            turning = 1;
+            stopped = 0;
+            reversal = 0;
+            if (prox_sensor == 4'b1001)
+                TurnAround = 0;
+            else
+                TurnAround = 1;
+        end
+        else if (ReverseFlag) begin
+            in = Down;
+            turning = 0;
+            stopped = 0;
+            reversal = 1;
+        end
+        else begin
+            in = 2'd0;
+            turning = 0;
+            stopped = 1;
+            reversal = 0;
+        end
+end
     
 endmodule
