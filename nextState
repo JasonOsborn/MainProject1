@@ -13,7 +13,7 @@ module nextState(
     input clk,
     input err,
     input [2:0]StateVars,
-    output reg [3:0]LED,
+    output [3:0]LED,
         // b0: SignalDetected(L + R)
         // b1: MailDelviered
         // b2: CountdownFinished
@@ -29,18 +29,29 @@ module nextState(
     );
     
     reg [2:0] nextState;
+    
+    wire LED0;
+    wire LED1;
+    wire LED2;
+    wire LED3;
+    
     //reg [2:0] prevState; // Previous state register. Currently unused.
     initial begin
         CurrentState <= 3'b000;
         nextState <= 3'b000;
-        LED = 4'b0000;
     end
+    
+    assign LED = {LED3,LED2,LED1,LED0};
+    assign LED0 = (CurrentState == 0)?1:0;
+    assign LED1 = (CurrentState == 1)?1:0;
+    assign LED2 = (CurrentState == 2)?1:0;
+    assign LED3 = (CurrentState == 3)?1:0;
+    
     
 always @(posedge clk)
     begin
         case(CurrentState)
             3'b000: begin // 0
-                LED = 4'b0001;
             // Move forward, look for IR
                 if(StateVars[0])
                     nextState = 1;
@@ -48,7 +59,6 @@ always @(posedge clk)
                     nextState = 0;
             end
             3'b001: begin // 1
-                LED = 4'b0010;
             // Stop
                 if(StateVars[1])
                     nextState = 2;
@@ -56,21 +66,17 @@ always @(posedge clk)
                     nextState = 1;
             end
             3'b010: begin // 2
-                LED = 4'b0100;
             // Wait
-                if (err)
-                    nextState = 4;
-                else if(StateVars[2])
+                if(StateVars[2])
                     nextState = 3;
+                else if (err)
+                    nextState = 4;
                 else
                     nextState = 2;
             end
             3'b011: begin // 3
-                LED = 4'b1000;
             // Move forward, NOT look for IR
-                if (err)
-                    nextState = 4;
-                else if(!StateVars[2])
+                if(!StateVars[2])
                     nextState = 0;
                 else
                     nextState = 3;
