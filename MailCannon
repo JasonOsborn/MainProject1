@@ -3,22 +3,19 @@
 module MailCannon(  input clk, // Clock
                     input [1:0]MailboxNum, // 10, 100, or 1k
                     input [2:0]state, // Reset state signal
-                    
                     output reg MailDelivered, // Activate countdown
-                    output reg [1:0]Mail_Counter, // How many delviered?
                     output reg [2:0] motor, // Launch motors
                     output reg err,
-                    output reg LED
+                    output LED
     );
     
     initial begin
-        Mail_Counter = 0;
         MailDelivered = 0;
         motor = 3'b000;
         err = 0;
-        LED = 0;
     end
-    
+
+    assign LED = err;
 
       always@(posedge clk) begin
 
@@ -26,42 +23,35 @@ module MailCannon(  input clk, // Clock
 // Determine which box (1 2 3)
 // Activate MailDelivered - State changing bit.
 
-           if ( state == 0 || state == 3 || state == 4 ) begin // State (0 (reset) + 3 (1sec) + 4(err) ) overrides activation
-                if( state == 0 || state == 4) begin
+           if ( state == 0 || state == 3 ) begin // State (0 (reset) + 3 (1sec) ) overrides activation
+                if( state == 0) begin
                     MailDelivered = 0;
+                    err = 0;
                 end
                 else begin
                     motor = 3'b000;
-                    LED = 0;
                 end
            end
            else begin // Right
+           if (state == 1 || state == 4)
                if (MailboxNum == 1) begin // 10
                   motor = 3'b100;
                   MailDelivered = 1;
-                  Mail_Counter = Mail_Counter + 1;
                   err = 0;
-                  LED = 0;
                end
                else if(MailboxNum == 2) begin // 100
                   motor = 3'b010;
                   MailDelivered = 1;
-                  Mail_Counter = Mail_Counter + 1;
                   err = 0;
-                  LED = 0;
                end
                else if(MailboxNum == 3) begin // 1k
                   motor = 3'b001;
                   MailDelivered = 1;
-                  Mail_Counter = Mail_Counter + 1;
                   err = 0;
-                  LED = 0;
                end
                else begin
-                    MailDelivered = 1;
                     err = 1;
-                    LED = 1;
                 end
            end
-      end
+        end
 endmodule
