@@ -6,11 +6,12 @@ module FreqCounter(
                     input signal,
                     input [2:0]state,
                     output reg [10:0]freq, // Calculated Frequency // IR signal
-                    output reg FreqDecided, // Do we have a frequency yet? // IR signal
+                    output FreqDecided, // Do we have a frequency yet? // IR signal
                     output reg SignalDetected,
-                    output reg LED,
-                    output reg [2:0]FlipLED
+                    output LED,
+                    output [2:0]FlipLED
                         );
+    assign FreqDecided = !(!(freq));
     
       reg last_sig = 0;
       reg middle_sig = 0;
@@ -23,19 +24,19 @@ module FreqCounter(
       reg [31:0] signal_count = 32'd0; // How many signal pulses did we see in 1/8th of a second? (incremented on posedge of signal)
       
       initial begin
-        middle_sig <= 0;
-        final_sig <= 0;
-        last_sig <= 0;
         
         ClockCount <= 0;
         signal_count <= 0;
         freq <= 0;
-        FreqDecided <= 0;
         SignalDetected <= 0;
         
-        LED <= 0;
-        FlipLED <= 0;
+        middle_sig <= 0;
+        final_sig <= 0;
+        last_sig <= 0;
       end
+        
+        assign FlipLED = {last_sig,middle_sig,final_sig};
+        assign LED = SignalDetected;
         
         always @(posedge clk) // D-flip flop 
             begin
@@ -46,26 +47,13 @@ module FreqCounter(
         
         always @(posedge clk)
         begin
-            if(last_sig)
-                FlipLED[2] = 1;
-            else
-                FlipLED[2] = 0;
-            if(middle_sig)
-                FlipLED[1] = 1;
-            else
-                FlipLED[1] = 0;
-            if(final_sig)
-                FlipLED[0] = 1;
-            else
-                FlipLED[0] = 0;
             if (state != 0 && state != 1) // general reset
                 begin
-                    if (state == 2) begin // freq reset
+                    if (state == 3) begin // freq reset
                         freq = 0;
                     end
                     signal_count = 0;
                     ClockCount = 0;
-                    FreqDecided = 0;
                     SignalDetected = 0;
                 end
             else
@@ -76,7 +64,6 @@ module FreqCounter(
                                     SignalDetected = 1; // note signal exists
                                     ClockCount = 0;
                                 end
-                                LED = 1;
                                 signal_count = signal_count + 1; // inc. signal counter
                             end
                             ClockCount = ClockCount + 1;
@@ -86,7 +73,6 @@ module FreqCounter(
                             freq = signal_count * 4; // calculate freq based on signal counter
                             signal_count = 0; // reset signal counter
                             ClockCount = 0; // reset clock count
-                            FreqDecided = 1; // note frequency decided
                         end
                 end
         end
