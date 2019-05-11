@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 module MailCannon(  input clk, // Clock
-                    input [1:0]MailboxNum, // 10, 100, or 1k
+                    input [2:0]MailboxNum, // 10, 100, or 1k
                     input [2:0]state, // Reset state signal
                     output reg MailDelivered, // Activate countdown
                     output reg [2:0] motor, // Launch motors
@@ -49,6 +49,11 @@ module MailCannon(  input clk, // Clock
                   MailDelivered = 1;
                   err = 0;
                end
+               else if(MailboxNum == 4) begin
+                  motor = 3'b000;
+                  MailDelivered = 1;
+                  err = 1;
+              end
                else begin
                     err = 1;
                 end
