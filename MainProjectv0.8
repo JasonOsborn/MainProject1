@@ -31,7 +31,7 @@ module MainProjectv0_8(
       wire SignalDetected; // IR sensor initial pulse bit.     // Resets on MailboxNum calculation [WhatBox -> FreqDecided]
       wire MailDelivered;       // Motor activation bit.            // Resets on state 0. [nextState -> MailCannon]
       
-      wire [1:0]MailboxNum;     // Which mailbox is it at?          // Resets on state 0. [nextState -> WhatBox]
+      wire [2:0]MailboxNum;     // Which mailbox is it at?          // Resets on state 0. [nextState -> WhatBox]
       wire [1:0]Mail_Counter;   // Counts mail deliveries.          // Does Not Reset.
       
       wire err;
@@ -52,7 +52,7 @@ FreqCounter MeasureFrequency(.clk(clk), .signal(signal), .state(state), .freq(fr
         // SignalDetected[L/R] = state control variable noting signal detection ( state 0->1)    
     
 // State Machine
-nextState DetermineState(.clk(clk), .CurrentState(state), .err(err), .StateVars({SecondsDone,MailDelivered,SignalDetected}), .LED(LED[3:0]));
+nextState DetermineState(.clk(clk), .CurrentState(state), .StateVars({SecondsDone,MailDelivered,SignalDetected}), .LED(LED[3:0]));
     // IN
         // clk = clock
         // StateVars =>
@@ -63,7 +63,7 @@ nextState DetermineState(.clk(clk), .CurrentState(state), .err(err), .StateVars(
         // CurrentState = state
 
 // Determine Mailbox
-WhatBox WhichBox(.clk(clk), .freqFinal(freqFinal), .Decided(FreqDecided), .state(state), .MailboxNum (MailboxNum[1:0]), .LED(LED[5]), .freqLED(LED[11:9]));
+WhatBox WhichBox(.clk(clk), .freqFinal(freqFinal), .Decided(FreqDecided), .state(state), .MailboxNum (MailboxNum), .LED(LED[5]), .freqLED(LED[11:9]));
   // IN
       // clk = clk ==> clock
       // frequency[L/R] ==> frequency of the input signal on either side.
@@ -83,7 +83,7 @@ MailCannon LaunchCodes(.clk(clk), .MailboxNum(MailboxNum), .state(state), .MailD
         // motors = motors activation
 
 // Counts down 1 second. Not modular.
-SecondCountdown FinalCountdown(.clk(clk), .Mail_Counter(Mail_Counter), .MailDelivered(MailDelivered), .SecondsDone(SecondsDone));
+SecondCountdown FinalCountdown(.clk(clk), .Mail_Counter(Mail_Counter), .MailDelivered(MailDelivered), .err(err), .SecondsDone(SecondsDone));
     // IN
         // clk = clock
         // MailDelivered = Activates 2 one sec cycles
