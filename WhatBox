@@ -6,7 +6,7 @@ module WhatBox(
     input Decided,
     input [2:0]state,
     
-    output reg [1:0]MailboxNum, // 0,1,2- 3 different
+    output reg [2:0]MailboxNum, // 0,1,2- 3 different
     output LED,
     output [2:0]freqLED
     );
@@ -17,31 +17,31 @@ module WhatBox(
     
     assign LED = Decided;
     assign freqLED = {freqLED1,freqLED2,freqLED3};
-    assign freqLED1 = (MailboxNum == 2'b01)?1:0;
-    assign freqLED2 = (MailboxNum == 2'b10)?1:0;
-    assign freqLED3 = (MailboxNum == 2'b11)?1:0;
+    assign freqLED1 = (MailboxNum == 3'b001)?1:0;
+    assign freqLED2 = (MailboxNum == 3'b010)?1:0;
+    assign freqLED3 = (MailboxNum == 3'b011)?1:0;
     
     initial begin
-        MailboxNum = 2'b00;
+        MailboxNum = 3'b000;
     end
     
     always @(posedge clk) begin
         if (Decided) begin
             // What mailbox?
             if ((freqFinal <= 40) && (freqFinal >= 6)) begin // 10 Hz
-                MailboxNum = 2'b01;
+                MailboxNum = 3'b001;
             end
             else if ((freqFinal <= 150) && (freqFinal >= 70)) begin // 100 Hz
-                MailboxNum = 2'b10;
+                MailboxNum = 3'b010;
             end
             else if (freqFinal >= 940) begin // 1k Hz
-                MailboxNum = 2'b11;
+                MailboxNum = 3'b011;
             end
             else
-                MailboxNum = 2'd0;
+                MailboxNum = 3'b100;
         end
         else if (state == 0) begin // State 0 resets all
-            MailboxNum = 2'b00;
+            MailboxNum = 3'b000;
         end
     end
 endmodule
