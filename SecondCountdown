@@ -1,6 +1,7 @@
 `timescale 1ns / 1ps
 module SecondCountdown( input clk,
                         input MailDelivered,
+                        input err,
                         output reg [1:0]Mail_Counter,
                         output reg SecondsDone
     );
@@ -22,7 +23,8 @@ module SecondCountdown( input clk,
             else begin
                 counter = 0;
                 SecondsDone = 1;
-                Mail_Counter = Mail_Counter + 1;
+                if (!err)
+                    Mail_Counter = Mail_Counter + 1;
             end
         else if (MailDelivered & SecondsDone)
             if (counter < counterMax2)
