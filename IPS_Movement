@@ -29,6 +29,7 @@ module IPS_Movement(
     reg reversal;
     reg StartFlag;
     reg TurnAround;
+    reg TurnFlag;
     
     PWM Modulator(.clk(clk), .turning(turning), .stopped(stopped), .reversal(reversal), .LED(LED), .current(current), .Enable(Enable));
 
@@ -43,6 +44,7 @@ module IPS_Movement(
         
         StartFlag <= 1;
         TurnAround <= 0;
+        TurnFlag <= 0;
     end
     
     
@@ -107,7 +109,7 @@ always @(posedge clk) begin
                 stopped = 0;
                 reversal = 0;
             end
-            4'b110x: begin // Adjust L
+            4'b101x: begin // Adjust L
                 in = Left;
                 turning = 1;
                 stopped = 0;
@@ -119,7 +121,7 @@ always @(posedge clk) begin
                 stopped = 0;
                 reversal = 0;
             end
-            4'bx011: begin // Adjust R
+            4'bx101: begin // Adjust R
                 in = Right;
                 turning = 1;
                 stopped = 0;
@@ -148,7 +150,9 @@ always @(posedge clk) begin
             turning = 1;
             stopped = 0;
             reversal = 0;
-            if (prox_sensor == 4'b1001)
+            if (prox_sensor == 4'b1111)
+                TurnFlag = 1;
+            if (prox_sensor == 4'b1001 && TurnFlag == 1)
                 TurnAround = 0;
             else
                 TurnAround = 1;
@@ -165,6 +169,7 @@ always @(posedge clk) begin
             stopped = 1;
             reversal = 0;
         end
-end
+    end
+        
     
 endmodule
